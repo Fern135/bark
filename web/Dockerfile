@@ -22,7 +22,7 @@ ENV NODE_ENV=development
 RUN cp -a node_modules /opt/node_modules \
     && date +%s%N | tee /opt/node_modules/.image-stamp > node_modules/.image-stamp
 EXPOSE 3000
-CMD ["sh", "-c", "if ! cmp -s /opt/node_modules/.image-stamp node_modules/.image-stamp; then echo 'web: node_modules volume is older than the image; refreshing it'; find node_modules -mindepth 1 -maxdepth 1 -exec rm -rf {} +; cp -a /opt/node_modules/. node_modules/; fi; exec npm run dev -- --hostname 0.0.0.0 --port 3000"]
+CMD ["sh", "-c", "if ! cmp -s /opt/node_modules/.image-stamp node_modules/.image-stamp; then echo 'web: node_modules volume is older than the image; refreshing it'; find node_modules -mindepth 1 -maxdepth 1 -exec rm -rf {} +; cp -a /opt/node_modules/. node_modules/; fi; exec npm run dev -- --hostname 0.0.0.0 --port ${PORT:-3000}"]
 
 # ---- build ----
 FROM deps AS builder

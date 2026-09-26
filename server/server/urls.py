@@ -20,6 +20,7 @@ from django.urls import path, include
 
 api_urls = [
     path("auth/", include("authenticator.urls")), # api/auth/
+    path("canvas/", include("canvas.urls")),      # api/canvas/
 ]
 
 urlpatterns = [

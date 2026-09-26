@@ -43,6 +43,7 @@ await api.post("/auth/login/", { username, password });    // browser now holds 
 | POST | `/api/auth/forgot-username/` | No | Yes | Email the username |
 | GET | `/api/auth/demo-inbox/?email=` | No | No | **Demo only.** Read the emails the app "sent" |
 | WS | `/ws/` | **Yes** | No | Real-time collaboration |
+| any | `/api/canvas/...` | **Yes** | Yes (writes) | Saved games: see [Canvas](#canvas-game-library-apicanvas) |
 
 Apart from `/me/`, the `/api/auth/` endpoints don't need a JWT, because they're how you get
 one. See [Protecting endpoints](#protecting-endpoints) for adding your own.
@@ -53,6 +54,7 @@ one. See [Protecting endpoints](#protecting-endpoints) for adding your own.
 | --- | --- | --- | --- |
 | 10 requests/minute per IP (burst of 10) | Gateway (`proxy/nginx.conf`) | POST login, register, forgot-password, reset-password, forgot-username | 429 |
 | 5 failed logins per account in 15 minutes | Django (`@rate_limit`) | POST login | 429 + `Retry-After` |
+| 300 requests/minute per user | Django (`@rate_limit`) | Every `/api/canvas/` endpoint | 429 + `Retry-After` |
 | 20 requests/second per IP | Gateway | Everything else under `/api/` | 429 |
 
 A locked account refuses even the correct password until the 15 minutes pass. Resetting the
@@ -174,6 +176,94 @@ The same emails are listed in the Django admin under **Demo emails**.
 
 ---
 
+## Canvas: game library (`/api/canvas/`)
+
+The dashboard's saved games. Every endpoint here **requires the JWT cookie**, needs the CSRF
+header on writes (like all POST/PUT/PATCH/DELETE requests), and only sees **your own games**:
+another user's game answers 404. (Collaborators come later, with live collaboration.)
+
+A game is stored as the engine's `GameDocument`, split into sections so the editor can
+save one small change at a time:
+
+```jsonc
+{
+  "version": 1,
+  "project": {
+    "version": 1, "name": "My Game",
+    "entities": [ { "id": "ground", "transform": {...}, "visual": {...}, ... } ],
+    "assets": [], "materials": [], "prefabs": [],
+    "properties": {}, "settings": {...}, "cameras": {...}, "input": {...}
+  },
+  "script": { "language": "python", "source": "print(\"Hello from Bark!\")\n" }
+}
+```
+
+A new game without a document starts from the default above (`server/canvas/defaults.py`).
+Keys the server doesn't know yet are kept and returned unchanged. Key order inside objects
+may change (Postgres `jsonb`); JSON treats key order as meaningless.
+
+**`revision`:** every write returns the game's new `revision`, which goes up by 1 on each
+change. Compare it with the one you loaded to notice changes from another tab.
+
+| Method | URL | Body | Success |
+| --- | --- | --- | --- |
+| GET | `/api/canvas/games/` | | 200 `{"games": [summary, ...]}` newest first |
+| POST | `/api/canvas/games/` | `{"name"?, "document"?}` | 201 game |
+| GET | `/api/canvas/games/<id>/` | | 200 game |
+| PUT | `/api/canvas/games/<id>/` | whole `GameDocument` | 200 game |
+| PATCH | `/api/canvas/games/<id>/` | `{"name": "New name"}` | 200 game |
+| DELETE | `/api/canvas/games/<id>/` | | 204 |
+| GET | `/api/canvas/games/<id>/<section>/` | | 200 `{"revision", "<section>": value}` |
+| PUT | `/api/canvas/games/<id>/<section>/` | the section's whole new value | 200 `{"revision", "<section>": value}` |
+| GET | `/api/canvas/games/<id>/entities/` | | 200 `{"revision", "entities": [...]}` |
+| POST | `/api/canvas/games/<id>/entities/` | entity with a new `id` | 201 `{"revision", "entity"}` |
+| GET | `/api/canvas/games/<id>/entities/<entity_id>/` | | 200 `{"revision", "entity"}` |
+| PUT | `/api/canvas/games/<id>/entities/<entity_id>/` | whole entity | 200 `{"revision", "entity"}` |
+| PATCH | `/api/canvas/games/<id>/entities/<entity_id>/` | only the keys to change | 200 `{"revision", "entity"}` |
+| DELETE | `/api/canvas/games/<id>/entities/<entity_id>/` | | 200 `{"revision", "deleted": [ids]}` |
+| GET | `/api/canvas/games/<id>/<library>/` | | 200 `{"revision", "<library>": [...]}` |
+| POST | `/api/canvas/games/<id>/<library>/` | item with a new `id` | 201 `{"revision", "item"}` |
+| GET | `/api/canvas/games/<id>/<library>/<item_id>/` | | 200 `{"revision", "item"}` |
+| PUT | `/api/canvas/games/<id>/<library>/<item_id>/` | whole item | 200 `{"revision", "item"}` |
+| DELETE | `/api/canvas/games/<id>/<library>/<item_id>/` | | 200 `{"revision", "deleted": id}` |
+
+- `<section>`: `settings`, `cameras`, `input`, `properties` or `script`.
+- `<library>`: `assets`, `materials` or `prefabs`.
+- **summary:** `{"id", "name", "revision", "created_at", "updated_at"}`.
+- **game:** a summary plus `"document"` (the whole `GameDocument`).
+
+### Details
+
+- **Create:** with no body, the game starts from the default document. `"name"` renames it,
+  and `"document"` starts from your own document instead. Each user can have up to 100 games.
+- **Sections:** `PUT` replaces the whole section. Send all of `settings`, not only
+  `gravity`. `input` maps actions to key-code lists (`{"jump": ["Space"]}`). `script` is
+  `{"language": "python", "source": "..."}` or `{"language": "blocks", "workspace": {...}}`.
+- **Entities** keep their order, and new ones are added at the end. `id` and `transform` are
+  required, `id` can't be changed, and `parentId` must name another entity in the game, with
+  no loops. `PATCH` replaces each key you send whole: sending `transform` replaces the whole
+  transform. `DELETE` also deletes the entity's children and grandchildren.
+- **Limits:** 2000 entities, 500 items per library, and 200,000 characters of script. Request
+  bodies can be up to 10 MB, because assets may be embedded as base64 `data:` URLs.
+
+| Error | When |
+| --- | --- |
+| 400 `{"error": "..."}` | Invalid body; the message says which part, e.g. `entity 'hat': parent 'head' does not exist` |
+| 401 | Not logged in |
+| 404 | The game, entity or item doesn't exist, or isn't yours |
+| 405 | Method not supported on that URL |
+| 409 | `POST` with an `id` that's already used |
+| 429 | Over `CANVAS_REQUESTS_PER_MINUTE` (300 per minute per user by default, shared by all canvas endpoints) |
+
+```ts
+const { data: game } = await api.post("/canvas/games/", { name: "Maze" });
+await api.patch(`/canvas/games/${game.id}/entities/ground/`, { visible: false });
+await api.put(`/canvas/games/${game.id}/script/`, { language: "python", source: "print('hi')\n" });
+const { data } = await api.get(`/canvas/games/${game.id}/`);   // data.document -> engine
+```
+
+---
+
 ## Protecting endpoints
 
 Two decorators live in `server/lib/decorators/`. They work on both sync and async views:
@@ -246,3 +336,4 @@ All in `.env` (see `.env.example`):
 | `WS_ALLOWED_ORIGINS` | `http://localhost:8080` | Origins allowed to open `/ws/` |
 | `LOGIN_MAX_FAILURES` | `5` | Failed logins before an account is locked |
 | `LOGIN_LOCKOUT_MINUTES` | `15` | How long the lock lasts |
+| `CANVAS_REQUESTS_PER_MINUTE` | `300` | Canvas requests per user per minute |
