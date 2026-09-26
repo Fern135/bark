@@ -66,6 +66,12 @@ def release_sha(value):
     return value
 
 
+def release_platform(value):
+    if value not in ('linux/arm64', 'linux/amd64'):
+        raise ValueError('Production platform must be linux/arm64 or linux/amd64')
+    return value
+
+
 def read_state():
     path = STATE / 'release.json'
     return json.loads(path.read_text()) if path.exists() else {}
@@ -90,13 +96,14 @@ def operation_lock():
 class Production:
     def __init__(self, sha=None):
         self.env = read_env()
+        self.platform = release_platform(self.env.get('BARK_PLATFORM', 'linux/arm64'))
         state = read_state()
         self.sha = release_sha(sha or state.get('active') or state.get('pending', {}).get('sha', ''))
 
     def compose(self, *args, **kwargs):
         # Avoid ambient shell variables silently overriding the reviewed production settings.
         env = {k: v for k, v in os.environ.items() if not k.startswith(('BARK_', 'COMPOSE_', 'DOCKER_'))}
-        env.update(self.env, BARK_RELEASE=self.sha, BARK_PLATFORM='linux/arm64')
+        env.update(self.env, BARK_RELEASE=self.sha, BARK_PLATFORM=self.platform)
         return run(['docker', 'compose', '--project-directory', ROOT, '--env-file', ENV_FILE,
                     '-f', ROOT / 'docker-compose.prod.yml', *args], env=env, **kwargs)
 
@@ -163,15 +170,19 @@ class Production:
         if actual != self.sha or dirty:
             raise RuntimeError('Build requires a clean checkout at the requested release SHA')
         architecture = run(['docker', 'info', '--format', '{{.Architecture}}'], capture_output=True, text=True).stdout.strip()
-        if architecture not in ('aarch64', 'arm64'):
-            raise RuntimeError('Build production releases on the Oracle ARM64 VM')
+        expected = self.platform.split('/')[1]
+        aliases = {'aarch64': 'arm64', 'x86_64': 'amd64'}
+        if aliases.get(architecture, architecture) != expected:
+            raise RuntimeError('Docker host architecture does not match BARK_PLATFORM')
         self.compose('config', '--quiet')
-        self.compose('build', 'web', 'server', 'ws', 'proxy')
+        # Keep builds sequential on the small VPS; retain the previous release images.
+        for service in ('web', 'server', 'ws', 'proxy'):
+            self.compose('build', service)
         for service in ('web', 'server', 'ws', 'proxy'):
             arch = run(['docker', 'image', 'inspect', f'bark-{service}:{self.sha}', '--format', '{{.Architecture}}'],
                        capture_output=True, text=True).stdout.strip()
-            if arch != 'arm64':
-                raise RuntimeError(f'{service} is not ARM64')
+            if arch != expected:
+                raise RuntimeError(f'{service} image does not match BARK_PLATFORM')
         state = read_state()
         state['built'] = self.sha
         save_state(state)
@@ -276,6 +287,7 @@ def initialize(args):
                 'OCI_NAMESPACE': args.namespace, 'OCI_BUCKET': args.bucket, 'OCI_TOPIC_ID': args.topic}
     if any(not re.fullmatch(r'[A-Za-z0-9@._+-]+', value) for value in supplied.values()):
         raise ValueError('Invalid configuration value')
+    supplied['BARK_PLATFORM'] = release_platform(args.platform)
     ENV_FILE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     for key in ('POSTGRES_PASSWORD', 'DJANGO_SECRET_KEY', 'JWT_SECRET'):
         supplied[key] = secrets.token_urlsafe(48)
@@ -293,6 +305,7 @@ def main():
     init = commands.add_parser('init')
     for key in ('domain', 'email', 'namespace', 'bucket', 'topic', 'region'):
         init.add_argument('--' + key, required=True)
+    init.add_argument('--platform', type=release_platform, default='linux/arm64')
     for name in ('build', 'prepare'):
         commands.add_parser(name).add_argument('sha', type=release_sha)
     activate = commands.add_parser('activate')

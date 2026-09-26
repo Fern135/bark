@@ -15,7 +15,7 @@ class ComposeTests(unittest.TestCase):
     def setUpClass(cls):
         env = os.environ.copy()
         env.update(SITE_DOMAIN='bark-test.duckdns.org', ACME_EMAIL='owner@example.test',
-                   BARK_RELEASE='a' * 40, BARK_PLATFORM='linux/arm64',
+                   BARK_RELEASE='a' * 40, BARK_PLATFORM='linux/amd64',
                    POSTGRES_PASSWORD='test-only-password', DJANGO_SECRET_KEY='test-only-django',
                    JWT_SECRET='test-only-jwt')
         result = subprocess.run(['docker', 'compose', '--env-file', str(ROOT / '.env.example'),
@@ -48,12 +48,16 @@ class ComposeTests(unittest.TestCase):
         self.assertEqual(self.services['server']['environment']['GUNICORN_WORKERS'], '2')
         self.assertEqual(self.services['web']['build']['args']['NEXT_PUBLIC_ACCOUNT_RECOVERY_ENABLED'], '0')
 
-    def test_health_checks_arm_and_bounded_logs(self):
+    def test_health_checks_platform_and_bounded_logs(self):
         for name, service in self.services.items():
-            self.assertEqual(service['platform'], 'linux/arm64', name)
+            self.assertEqual(service['platform'], 'linux/amd64', name)
             self.assertEqual(service['logging']['options']['max-file'], '3', name)
             if name != 'caddy':
                 self.assertIn('healthcheck', service, name)
+
+    def test_runtime_limits_leave_room_for_host_on_four_gib_vm(self):
+        total = sum(int(service['mem_limit']) for service in self.services.values())
+        self.assertLessEqual(total, 3200 * 1024**2)
 
 
 if __name__ == '__main__':

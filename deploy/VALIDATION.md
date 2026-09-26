@@ -1,5 +1,24 @@
 # Validation record — September 26, 2026
 
+## OVH transition
+
+The owner subsequently selected OVH VPS-1 at $5.35/month before tax, monthly billing.
+Virginia availability and the price were verified through the official US APIs.
+An anonymous cart has one Ubuntu 24.04 VPS configured; no order has been submitted.
+Account setup is awaiting the owner. See [OVH.md](OVH.md) for remaining launch gates.
+The older Oracle-only blocker and authorization statements below describe that
+earlier attempt, not the current hosting selection.
+
+The release tool now supports explicit AMD64 and ARM64 targets, checks host and image
+architecture, and builds application images sequentially. Runtime memory limits
+total 3,136 MiB for the new 4 GiB target. Eighteen deployment/configuration tests pass,
+including rejection of a wrong host/image architecture and the aggregate memory
+budget. This does not validate runtime memory use or successful container builds.
+OCI-backed backups remain a launch blocker on OVH until an appropriate offsite
+backup identity or replacement is configured and tested.
+
+## Earlier validation
+
 Completed locally on Windows:
 
 - Django: 204 tests, successful, four PostgreSQL/Redis-specific checks skipped.

@@ -3,6 +3,7 @@ import importlib.util
 import json
 from pathlib import Path
 import tempfile
+from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
 
@@ -30,6 +31,35 @@ class OperationsTests(unittest.TestCase):
         for value in ('main', 'a' * 40 + ';pwd', '../release', '-option'):
             with self.assertRaises(ValueError):
                 bark.release_sha(value)
+
+    def test_compose_uses_configured_platform_over_ambient_variables(self):
+        for platform in ('linux/amd64', 'linux/arm64'):
+            self.env['BARK_PLATFORM'] = platform
+            production = bark.Production('a' * 40)
+            with patch.dict(bark.os.environ, {'BARK_PLATFORM': 'linux/wrong'}), \
+                 patch.object(bark, 'run') as run:
+                production.compose('config', '--quiet')
+            self.assertEqual(run.call_args.kwargs['env']['BARK_PLATFORM'], platform)
+
+    def test_build_rejects_wrong_host_architecture_before_building(self):
+        self.env['BARK_PLATFORM'] = 'linux/amd64'
+        production = bark.Production('a' * 40)
+        outputs = [production.sha, '', 'aarch64']
+        with patch.object(bark, 'run', side_effect=[SimpleNamespace(stdout=x) for x in outputs]), \
+             patch.object(production, 'compose') as compose:
+            with self.assertRaisesRegex(RuntimeError, 'host architecture'):
+                production.build()
+        compose.assert_not_called()
+
+    def test_build_checks_every_image_before_recording_success(self):
+        self.env['BARK_PLATFORM'] = 'linux/amd64'
+        production = bark.Production('a' * 40)
+        outputs = [production.sha, '', 'x86_64', 'amd64', 'amd64', 'arm64']
+        with patch.object(bark, 'run', side_effect=[SimpleNamespace(stdout=x) for x in outputs]), \
+             patch.object(production, 'compose'):
+            with self.assertRaisesRegex(RuntimeError, 'image does not match'):
+                production.build()
+        self.assertNotIn('built', bark.read_state())
 
     def test_hostname_rejects_urls_ports_and_interpolation(self):
         for value in ('https://test.duckdns.org', 'test.duckdns.org:80', '$(whoami).duckdns.org', '*.duckdns.org'):
