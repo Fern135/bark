@@ -1,0 +1,42 @@
+{
+  "name": "@bark/engine",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173 --strictPort --open /test/",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.build.json --noEmit",
+    "test": "npm run build && tsc -p tsconfig.test.json && node --test test/world.test.mjs",
+    "build": "tsc -p tsconfig.build.json",
+    "build:test": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4173 --strictPort --open /test/"
+  },
+  "dependencies": {
+    "@babylonjs/core": "9.28.0",
+    "@babylonjs/havok": "1.3.14",
+    "@babylonjs/loaders": "9.28.0",
+    "babylonjs-gltf2interface": "9.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "6.1.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.1"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
