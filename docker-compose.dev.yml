@@ -1,0 +1,26 @@
+# Dev overrides (hot reload):
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  web:
+    build:
+      target: dev
+    volumes:
+      - ./web:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      WATCHPACK_POLLING: "true"
+
+  server:
+    command: ["runserver"]
+    environment:
+      DJANGO_DEBUG: "1"
+    volumes:
+      - ./server:/app
+
+  ws:
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+    read_only: false
+    volumes:
+      - ./ws:/app
