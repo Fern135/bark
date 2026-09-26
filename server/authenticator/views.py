@@ -1,7 +1,7 @@
 # from django.shortcuts import render
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.shortcuts import JsonResponse
+from django.http.response import JsonResponse
 from django.contrib.auth.hashers import make_password, check_password
 import json
 import uuid
