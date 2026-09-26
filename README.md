@@ -56,6 +56,11 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 docker compose exec server python manage.py migrate
 ```
 
+<!-- create new app -->
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec server python manage.py startapp <app_name>
+```
+
 
 ## Other useful Docker commands
 
