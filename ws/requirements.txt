@@ -15,6 +15,10 @@ PyJWT==2.15.0
 # Postgres (same database as server/)
 asyncpg==0.31.0
 
+# Cross-worker fan-out for collaboration. Optional at runtime: with no REDIS_URL the
+# service falls back to an in-process bus (single worker).
+redis==6.4.0
+
 # Sub-dependencies
 annotated-doc==0.0.5
 annotated-types==0.8.0
