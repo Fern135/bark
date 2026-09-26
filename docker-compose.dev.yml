@@ -20,7 +20,11 @@ services:
       - ./server:/app
 
   ws:
-    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+    # --reload replaces the image CMD, so the websocket flags have to be repeated here.
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload",
+              "--ws-max-size", "1048576", "--ws-ping-interval", "20", "--ws-ping-timeout", "20"]
+    environment:
+      WS_AUTO_MIGRATE: "1"
     read_only: false
     volumes:
       - ./ws:/app
