@@ -1,8 +1,12 @@
 # bark
 
+**API reference:** [API.md](API.md) lists every endpoint, its body, and whether it needs a JWT.
+
 | Directory | What it is | Port (internal only) |
 | --- | --- | --- |
 | `web/` | Next.js (TypeScript, Bootstrap 5, axios) | 3000 |
+| `engine/` | `@bark/engine`: Babylon.js + Havok game engine (browser library) | build-only |
+| `scripting/` | `@bark/scripting`: Blockly/Python (Pyodide) scripting (browser library) | build-only |
 | `server/` | Django API (JWT + view decorators) | 8000 |
 | `ws/` | Python websocket service (FastAPI + asyncpg) | 8001 |
 | `proxy/` | nginx gateway, the **only** public entrypoint | 8080 → `APP_PORT` |
@@ -19,6 +23,9 @@ browser ──► proxy :8080 ─┬─ /        ─► web
 from outside, and they cannot reach the internet. The browser only talks to the gateway, so every
 API call comes from the Next.js frontend on the same origin. The ws service also rejects any
 socket whose `Origin` isn't in `WS_ALLOWED_ORIGINS`, and any connection without a valid JWT.
+
+`engine` and `scripting` never run as containers. Their images only build the packages, and web's
+image build is the only thing that uses them (see [engine/ and scripting/](#engine-and-scripting)).
 
 ---
 
@@ -45,16 +52,20 @@ The web image creates its optional `public` asset directory during the build. Sh
 ## Run in dev mode (hot reload)
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -V
 ```
 
 This bind-mounts `web/`, `server/` and `ws/` into their containers. It runs `next dev`,
 `manage.py runserver` (with `DJANGO_DEBUG=1`) and `uvicorn --reload`.
 
+`-V` (`--renew-anon-volumes`) makes web use freshly built packages. Without it, dev mode keeps
+the old `node_modules` volume and ignores changes to `engine/`, `scripting/` or `web/package.json`.
+Changes in `engine/` or `scripting/` are picked up when you rerun this command, not by hot reload.
+
 
 <!-- migration -->
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -V
 docker compose exec server python manage.py migrate
 ```
 
@@ -79,6 +90,8 @@ docker compose exec server python manage.py makemigrations
 docker compose exec server python manage.py migrate
 docker compose exec server python manage.py createsuperuser
 docker compose exec server python manage.py shell
+docker compose exec server python manage.py test --parallel auto   # Django tests (redis DB 15, never the app's cache)
+docker compose logs server | grep '\[tests\]'   # results of the tests that run on every server start
 docker compose exec db psql -U bark -d bark    # Postgres shell
 ```
 
@@ -126,6 +139,50 @@ as its first message.
   Django's `csrftoken` cookie as the `X-CSRFToken` header.
 - `src/lib/socket.ts` has `openSocket()`, which connects to `/ws/`.
 - Bootstrap CSS is imported in `src/app/layout.tsx`.
+- `src/lib/game.ts` has the URLs and worker factory that engine/scripting need (see below).
+
+## engine/ and scripting/
+
+Both are browser libraries (rendering, physics and Python all run in the user's tab), bundled
+into web. They connect to web **only through Docker**:
+
+1. `engine/Dockerfile` builds `@bark/engine` into a build-only image.
+2. `scripting/Dockerfile` builds `@bark/scripting` against that engine image. It gets it through
+   the `engine` build context in `docker-compose.yml`.
+3. `web/Dockerfile` copies both into `node_modules/@bark/` via its `engine` and `scripting`
+   build contexts.
+
+They have `scale: 0` in `docker-compose.yml`: compose builds them but never creates a container,
+and they join no network, so `server`, `ws`, `db` and `proxy` cannot reach them. `web/package.json`
+does not reference them, so `web` only runs through docker compose. Outside Docker, `npm run dev`
+in `web/` stops with an explanation.
+
+Before `next dev` / `next build`, `web/scripts/copy-game-assets.mjs` copies the runtime files into
+`web/public/` (gitignored). The web container has no internet, so everything is served locally:
+
+| URL | What |
+| --- | --- |
+| `/pyodide/` | Pinned Pyodide (Python) files, ~13 MB |
+| `/havok/HavokPhysics.wasm` | Havok physics WASM |
+| `/scripting/worker.js` | Scripting's Python worker |
+
+Use them from a `"use client"` component, importing dynamically inside an effect:
+
+```tsx
+const { createGamePlayer } = await import("@bark/scripting/player");
+const player = await createGamePlayer({
+  canvas,
+  havokWasmUrl: HAVOK_WASM_URL,       // from @/lib/game
+  pythonRuntimeUrl: PYODIDE_URL,
+  workerFactory: createPythonWorker,  // required under Next.js
+});
+```
+
+`workerFactory` is needed because Next's bundler can't resolve the worker URL baked into
+scripting's build. The build prints a harmless `Module not found: Can't resolve <dynamic>`
+warning for that line.
+
+Rebuild just the packages and web with `docker compose build web`.
 
 ## ws/ (websockets)
 

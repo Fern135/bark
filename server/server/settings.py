@@ -90,6 +90,43 @@ JWT_AUDIENCE = Config.JWT_AUDIENCE
 JWT_ACCESS_COOKIE = Config.JWT_ACCESS_COOKIE
 JWT_ACCESS_TTL_MINUTES = Config.JWT_ACCESS_TTL_MINUTES
 JWT_REFRESH_TTL_DAYS = Config.JWT_REFRESH_TTL_DAYS
+JWT_COOKIE_SECURE = Config.JWT_COOKIE_SECURE
+
+
+# Login brute-force protection (authenticator/views.py)
+
+LOGIN_MAX_FAILURES = Config.LOGIN_MAX_FAILURES
+LOGIN_LOCKOUT_MINUTES = Config.LOGIN_LOCKOUT_MINUTES
+
+
+# Cache: redis in Docker (shared by all workers), in-memory otherwise
+
+CACHES = {
+    'default': (
+        {'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': Config.CACHE_URL}
+        if Config.CACHE_URL
+        else {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}
+    )
+}
+
+
+# Password / username recovery (authenticator/views.py)
+
+FRONTEND_URL = Config.FRONTEND_URL
+PASSWORD_RESET_MINUTES = Config.PASSWORD_RESET_MINUTES
+
+
+# Email
+
+# DEMO_EMAIL=1 saves emails to the demo inbox instead of sending them (authenticator/email_backends.py).
+DEMO_EMAIL = Config.DEMO_EMAIL
+EMAIL_BACKEND = 'authenticator.email_backends.DemoInboxBackend' if DEMO_EMAIL else Config.EMAIL_BACKEND
+EMAIL_HOST = Config.EMAIL_HOST
+EMAIL_PORT = Config.EMAIL_PORT
+EMAIL_HOST_USER = Config.EMAIL_HOST_USER
+EMAIL_HOST_PASSWORD = Config.EMAIL_HOST_PASSWORD
+EMAIL_USE_TLS = Config.EMAIL_USE_TLS
+DEFAULT_FROM_EMAIL = Config.DEFAULT_FROM_EMAIL
 
 
 # Password validation

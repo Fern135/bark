@@ -18,6 +18,9 @@ psycopg[binary]==3.3.6
 # Loads bark/.env when running outside Docker (config/Config.py)
 python-dotenv==1.2.3
 
+# Shared cache (login attempt counters) in the redis service
+redis==6.4.0
+
 # Production WSGI server
 gunicorn==26.2.0
 

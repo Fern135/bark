@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# game runtime assets, copied from engine/ and scripting/ by scripts/copy-game-assets.mjs
+/public/pyodide/
+/public/havok/
+/public/scripting/
