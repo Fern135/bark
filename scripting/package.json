@@ -1,0 +1,63 @@
+{
+  "name": "@bark/scripting",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist",
+    "scripts",
+    "ENGINE-CONTRACT.md",
+    "public/pyodide"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./blocks": {
+      "types": "./dist/types/blocks.d.ts",
+      "import": "./dist/blocks.js"
+    },
+    "./engine": {
+      "types": "./dist/types/engine.d.ts",
+      "import": "./dist/engine.js"
+    }
+  },
+  "scripts": {
+    "postinstall": "node scripts/copy-pyodide.mjs",
+    "dev": "vite --host 127.0.0.1 --port 5174 --strictPort",
+    "typecheck": "tsc --noEmit",
+    "build": "vite build --mode library && tsc -p tsconfig.build.json",
+    "build:playground": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4174 --strictPort",
+    "test": "tsx --test test/*.test.ts",
+    "test:browser": "playwright test",
+    "test:production": "playwright test --config playwright.production.config.ts"
+  },
+  "dependencies": {
+    "@babylonjs/havok": "1.3.14",
+    "@bark/engine": "file:../engine",
+    "@codemirror/lang-python": "6.2.1",
+    "@codemirror/lint": "6.9.7",
+    "@codemirror/state": "6.7.6",
+    "@codemirror/view": "6.43.13",
+    "blockly": "13.3.0",
+    "codemirror": "6.0.2",
+    "pyodide": "314.0.7",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.58.2",
+    "@types/node": "26.0.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.1.1",
+    "tsx": "4.23.15",
+    "typescript": "7.0.2",
+    "vite": "8.3.1"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}
