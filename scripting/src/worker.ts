@@ -9,9 +9,13 @@ const scope = globalThis as unknown as {
 let session = 0,
   py: PyodideInterface,
   game: any,
+  inspectionEnabled = false,
   requestId = 0,
   failed = false;
-const pending = new Map<number, { resolve(value: string): void; reject(error: Error): void }>();
+const pending = new Map<
+  number,
+  { resolve(value: string): void; reject(error: Error): void }
+>();
 function send(message: Record<string, unknown>) {
   scope.postMessage({ ...message, session } as WorkerMessage);
 }
@@ -20,13 +24,16 @@ function error(error: unknown) {
   failed = true;
   send({
     type: "error",
-    diagnostic: { message: error instanceof Error ? error.message : String(error) },
+    diagnostic: {
+      message: error instanceof Error ? error.message : String(error),
+    },
   });
 }
 const output = { stdout: "", stderr: "" };
 let outputTimer: ReturnType<typeof setTimeout> | undefined;
 function print(stream: "stdout" | "stderr", text: string) {
-  if (output[stream].length < 8192) output[stream] += text.slice(0, 8192) + "\n";
+  if (output[stream].length < 8192)
+    output[stream] += text.slice(0, 8192) + "\n";
   if (!outputTimer)
     outputTimer = setTimeout(() => {
       outputTimer = undefined;
@@ -41,6 +48,7 @@ scope.onmessage = async ({ data: message }) => {
   try {
     if (message.type === "prepare") {
       session = message.session;
+      inspectionEnabled = message.inspect ?? false;
       const { loadPyodide } = await import(
         /* @vite-ignore */ new URL("pyodide.mjs", message.runtimeUrl).href
       );
@@ -50,6 +58,9 @@ scope.onmessage = async ({ data: message }) => {
         stderr: (text: string) => print("stderr", text),
       });
       py.registerJsModule("bark_bridge", {
+        inspect_json(payload: string) {
+          send({ type: "inspection", snapshot: JSON.parse(payload) });
+        },
         request_json(payload: string) {
           if (pending.size >= 256)
             return Promise.reject(new Error("Script command queue overflow."));
@@ -70,15 +81,20 @@ scope.onmessage = async ({ data: message }) => {
       const api = py.pyimport("bark");
       game = api.game.copy();
       api.destroy();
+      game._inspect(inspectionEnabled);
       py.globals.set("_bark_source", message.python);
       await py.runPythonAsync(
-        "from bark import _report\ntry:\n    exec(compile(_bark_source, 'script.py', 'exec'), {'__name__': '__bark_script__'})\nexcept BaseException as error:\n    _report(error)",
+        "from bark import _report, game\ngame._globals = {'__name__': '__bark_script__'}\ntry:\n    exec(compile(_bark_source, 'script.py', 'exec'), game._globals)\nexcept BaseException as error:\n    _report(error)",
       );
       if (!failed) send({ type: "ready" });
       return;
     }
     if (message.session !== session || failed) return;
     switch (message.type) {
+      case "inspect":
+        inspectionEnabled = message.enabled;
+        game?._inspect(inspectionEnabled);
+        break;
       case "response": {
         const request = pending.get(message.request);
         pending.delete(message.request);
@@ -91,7 +107,11 @@ scope.onmessage = async ({ data: message }) => {
         send({ type: "event_ack" });
         break;
       case "tick":
-        game._tick(message.clock.elapsed, message.clock.tick, message.clock.delta);
+        game._tick(
+          message.clock.elapsed,
+          message.clock.tick,
+          message.clock.delta,
+        );
         send({ type: "tick_ack" });
         break;
       case "pause":

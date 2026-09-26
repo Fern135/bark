@@ -40,6 +40,8 @@ docker compose up -d --build
 
 Open http://localhost:8080
 
+The web image creates its optional `public` asset directory during the build. Shell entrypoints use LF line endings, enforced by `.gitattributes`, including on Windows checkouts. Docker Desktop's Linux engine must be running before building or starting the stack.
+
 ## Run in dev mode (hot reload)
 
 ```bash

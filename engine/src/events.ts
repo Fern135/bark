@@ -7,8 +7,9 @@ export class Events {
     this.listeners.add(entry);
     return () => this.listeners.delete(entry);
   }
-  emit<K extends keyof EngineEvents>(type: K, value: EngineEvents[K]): void {
+  emit<K extends keyof EngineEvents>(type: K, value: EngineEvents[K], current: () => boolean = () => true): void {
     for (const entry of [...this.listeners]) {
+      if (!current()) break;
       if (!this.listeners.has(entry) || entry.type !== type) continue;
       try { entry.fn(structuredClone(value) as never); } catch (error) { if (type !== "error") this.failed(error); }
     }

@@ -1,13 +1,25 @@
 import * as Blockly from "blockly";
 import "blockly/blocks";
 import * as En from "blockly/msg/en";
-import type { Compilation, ScriptCompiler, ScriptDocument } from "./types.js";
+import type {
+  Compilation,
+  Diagnostic,
+  ScriptCompiler,
+  ScriptDocument,
+} from "./types.js";
+import {
+  registerFeatureBlocks,
+  featureCategories,
+  featureExpression,
+  featureStatement,
+} from "./block-features.js";
 
 Blockly.setLocale(En as unknown as Record<string, string>);
 export interface BlockChoices {
   entities: [string, string][];
   prefabs: [string, string][];
   actions: [string, string][];
+  properties?: Record<string, string[]>;
 }
 let choices: BlockChoices = {
   entities: [["Player", "player"]],
@@ -17,10 +29,106 @@ let choices: BlockChoices = {
 export function setBlockChoices(value: BlockChoices) {
   choices = value;
 }
-const dropdown = (kind: keyof BlockChoices) => ({
+registerFeatureBlocks(() =>
+  choices.entities.length ? choices.entities : [["None available", ""]],
+);
+Blockly.Blocks.bark_property_key = {
+  init(this: Blockly.Block) {
+    this.appendDummyInput()
+      .appendField("property key for")
+      .appendField(
+        new Blockly.FieldDropdown(() => [["World", ""], ...choices.entities]),
+        "TARGET",
+      )
+      .appendField(new Blockly.FieldTextInput("score"), "KEY")
+      .appendField(
+        new Blockly.FieldDropdown(
+          function (this: Blockly.FieldDropdown) {
+            const target = this.getSourceBlock()?.getFieldValue("TARGET") ?? "";
+            return [
+              ["Suggestions…", ""],
+              ...(choices.properties?.[target] ?? []).map(
+                (key) => [key, key] as [string, string],
+              ),
+            ];
+          },
+          function (this: Blockly.FieldDropdown, key: string) {
+            if (key) this.getSourceBlock()?.setFieldValue(key, "KEY");
+            return "";
+          },
+        ),
+        "SUGGEST",
+      );
+    this.setOutput(true, "String");
+    this.setColour(190);
+    this.setTooltip(
+      "Choose a starting property or type a new key. Target only filters suggestions.",
+    );
+  },
+};
+/** Check saved IDs before Blockly can replace an unavailable dropdown value. */
+export function validateBlockReferences(
+  workspace: Record<string, unknown>,
+  available: BlockChoices = choices,
+): Diagnostic[] {
+  const diagnostics: Diagnostic[] = [];
+  const referenceFields: Record<
+    string,
+    ["entities" | "prefabs" | "actions", string]
+  > = {
+    bark_entity: ["entities", "ENTITY"],
+    bark_touch: ["entities", "ENTITY"],
+    bark_interact: ["entities", "ENTITY"],
+    bark_touch_end: ["entities", "ENTITY"],
+    bark_respawn_event: ["entities", "ENTITY"],
+    bark_input: ["actions", "ACTION"],
+    bark_input_event: ["actions", "ACTION"],
+    bark_spawn: ["prefabs", "PREFAB"],
+    bark_spawn_do: ["prefabs", "PREFAB"],
+  };
+  const visit = (value: unknown) => {
+    if (!value || typeof value !== "object") return;
+    const block = value as {
+      type?: string;
+      id?: string;
+      fields?: Record<string, unknown>;
+      inputs?: Record<string, { block?: unknown; shadow?: unknown }>;
+      next?: { block?: unknown; shadow?: unknown };
+    };
+    const reference =
+      block.type &&
+      Object.hasOwn(referenceFields, block.type) &&
+      referenceFields[block.type];
+    if (reference) {
+      const [kind, field] = reference,
+        id = block.fields?.[field];
+      if (
+        id !== undefined &&
+        !available[kind].some(([, option]) => option === id)
+      )
+        diagnostics.push({
+          blockId: block.id,
+          message: `Unknown ${kind === "entities" ? "entity" : kind === "prefabs" ? "prefab" : "input action"} reference: ${String(id)}. Select an existing value.`,
+        });
+    }
+    for (const input of Object.values(block.inputs ?? {})) {
+      visit(input?.block);
+      visit(input?.shadow);
+    }
+    visit(block.next?.block);
+    visit(block.next?.shadow);
+  };
+  const roots = (workspace.blocks as { blocks?: unknown[] } | undefined)
+    ?.blocks;
+  if (Array.isArray(roots)) roots.forEach(visit);
+  return diagnostics;
+}
+const dropdown = (kind: "entities" | "prefabs" | "actions") => ({
   type: "field_dropdown",
-  name: kind === "actions" ? "ACTION" : kind === "prefabs" ? "PREFAB" : "ENTITY",
-  options: () => (choices[kind].length ? choices[kind] : [["None available", ""]]),
+  name:
+    kind === "actions" ? "ACTION" : kind === "prefabs" ? "PREFAB" : "ENTITY",
+  options: () =>
+    choices[kind].length ? choices[kind] : [["None available", ""]],
 });
 const value = (name: string, check?: string | string[]) => ({
   type: "input_value",
@@ -66,8 +174,18 @@ Blockly.defineBlocksWithJsonArray([
     output: "Entity",
     colour: 170,
   },
-  { type: "bark_other", message0: "other entity from touch event", output: "Entity", colour: 42 },
-  { type: "bark_actor", message0: "actor ID from interaction", output: "String", colour: 42 },
+  {
+    type: "bark_other",
+    message0: "other entity from touch event",
+    output: "Entity",
+    colour: 42,
+  },
+  {
+    type: "bark_actor",
+    message0: "actor ID from interaction",
+    output: "String",
+    colour: 42,
+  },
   {
     type: "bark_event_state",
     message0: "input event %1",
@@ -120,7 +238,11 @@ Blockly.defineBlocksWithJsonArray([
   {
     type: "bark_horizontal_velocity",
     message0: "move %1 at x speed %2 z speed %3 (keep jump / fall)",
-    args0: [value("ENTITY", "Entity"), value("X", "Number"), value("Z", "Number")],
+    args0: [
+      value("ENTITY", "Entity"),
+      value("X", "Number"),
+      value("Z", "Number"),
+    ],
     ...action,
   },
   {
@@ -134,7 +256,12 @@ Blockly.defineBlocksWithJsonArray([
     ],
     ...action,
   },
-  { type: "bark_destroy", message0: "destroy %1", args0: [value("ENTITY", "Entity")], ...action },
+  {
+    type: "bark_destroy",
+    message0: "destroy %1",
+    args0: [value("ENTITY", "Entity")],
+    ...action,
+  },
   {
     type: "bark_position",
     message0: "position of %1",
@@ -166,7 +293,10 @@ Blockly.defineBlocksWithJsonArray([
   {
     type: "bark_input",
     message0: "input %1 is %2",
-    args0: [dropdown("actions"), select("STATE", ["held", "pressed", "released"])],
+    args0: [
+      dropdown("actions"),
+      select("STATE", ["held", "pressed", "released"]),
+    ],
     output: "Boolean",
     colour: 215,
   },
@@ -180,14 +310,24 @@ Blockly.defineBlocksWithJsonArray([
   {
     type: "bark_spawn",
     message0: "spawn %1 x %2 y %3 z %4",
-    args0: [dropdown("prefabs"), value("X", "Number"), value("Y", "Number"), value("Z", "Number")],
+    args0: [
+      dropdown("prefabs"),
+      value("X", "Number"),
+      value("Y", "Number"),
+      value("Z", "Number"),
+    ],
     output: "Entity",
     colour: 170,
   },
   {
     type: "bark_spawn_do",
     message0: "spawn %1 x %2 y %3 z %4",
-    args0: [dropdown("prefabs"), value("X", "Number"), value("Y", "Number"), value("Z", "Number")],
+    args0: [
+      dropdown("prefabs"),
+      value("X", "Number"),
+      value("Y", "Number"),
+      value("Z", "Number"),
+    ],
     ...action,
   },
   {
@@ -197,7 +337,12 @@ Blockly.defineBlocksWithJsonArray([
     ...action,
     colour: 285,
   },
-  { type: "bark_frame", message0: "wait for next frame", ...action, colour: 285 },
+  {
+    type: "bark_frame",
+    message0: "wait for next frame",
+    ...action,
+    colour: 285,
+  },
   {
     type: "bark_forever",
     message0: "forever %1 %2",
@@ -207,17 +352,26 @@ Blockly.defineBlocksWithJsonArray([
   },
 ]);
 
-const shadow = (num = 0) => ({ shadow: { type: "math_number", fields: { NUM: num } } });
+const shadow = (num = 0) => ({
+  shadow: { type: "math_number", fields: { NUM: num } },
+});
 const entity = () => ({ shadow: { type: "bark_entity" } });
 const item = (type: string, inputs?: Record<string, unknown>) => ({
   kind: "block",
   type,
   ...(inputs ? { inputs } : {}),
 });
-const vectorInputs = { ENTITY: entity(), X: shadow(), Y: shadow(), Z: shadow() };
+const vectorInputs = {
+  ENTITY: entity(),
+  X: shadow(),
+  Y: shadow(),
+  Z: shadow(),
+};
 export const toolbox = {
   kind: "categoryToolbox",
   contents: [
+    ...featureCategories,
+    { kind: "category", name: "My Blocks", colour: "290", custom: "PROCEDURE" },
     {
       kind: "category",
       name: "Events",
@@ -241,7 +395,11 @@ export const toolbox = {
         item("bark_move", vectorInputs),
         item("bark_forward", { ENTITY: entity(), VALUE: shadow(1) }),
         item("bark_turn", { ENTITY: entity(), VALUE: shadow(90) }),
-        item("bark_horizontal_velocity", { ENTITY: entity(), X: shadow(), Z: shadow() }),
+        item("bark_horizontal_velocity", {
+          ENTITY: entity(),
+          X: shadow(),
+          Z: shadow(),
+        }),
         item("bark_velocity", vectorInputs),
         item("bark_impulse", vectorInputs),
         item("bark_destroy", { ENTITY: entity() }),
@@ -253,12 +411,19 @@ export const toolbox = {
       kind: "category",
       name: "Sensing",
       colour: "215",
-      contents: ["bark_position", "bark_get_velocity", "bark_grounded", "bark_entity_id"]
+      contents: [
+        "bark_position",
+        "bark_get_velocity",
+        "bark_grounded",
+        "bark_entity_id",
+      ]
         .map((t) => item(t, { ENTITY: entity() }))
         .concat([
           item("bark_axis"),
           item("bark_input"),
-          item("bark_find", { TAG: { shadow: { type: "text", fields: { TEXT: "collectible" } } } }),
+          item("bark_find", {
+            TAG: { shadow: { type: "text", fields: { TEXT: "collectible" } } },
+          }),
         ]),
     },
     {
@@ -298,7 +463,68 @@ export const toolbox = {
   ],
 };
 
-export function compileBlocks(script: ScriptDocument): Compilation {
+export function compileBlocks(
+  script: ScriptDocument,
+  available: BlockChoices = choices,
+): Compilation {
+  if (script.language !== "blocks") throw new Error("Expected blocks.");
+  const diagnostics = validateBlockReferences(script.workspace, available);
+  // Blockly repairs procedure callers while loading. Report broken saved signatures first.
+  type Saved = {
+    type?: string;
+    id?: string;
+    fields?: Record<string, unknown>;
+    extraState?: { name?: string; params?: unknown[] };
+    inputs?: Record<string, { block?: Saved; shadow?: Saved }>;
+    next?: { block?: Saved };
+  };
+  const rootsValue = (
+    script.workspace.blocks as { blocks?: Saved[] } | undefined
+  )?.blocks;
+  const savedRoots = Array.isArray(rootsValue) ? rootsValue : [];
+  const signatures = new Map<string, number>();
+  for (const root of savedRoots)
+    if (root.type?.startsWith("procedures_def")) {
+      const name = String(root.fields?.NAME ?? "");
+      if (signatures.has(name))
+        diagnostics.push({
+          blockId: root.id,
+          message: `Duplicate function name: ${name}`,
+        });
+      signatures.set(name, root.extraState?.params?.length ?? 0);
+    }
+  const validateCall = (block?: Saved) => {
+    if (!block) return;
+    if (block.type?.startsWith("procedures_call")) {
+      const name = block.extraState?.name ?? String(block.fields?.NAME ?? "");
+      if (!signatures.has(name))
+        diagnostics.push({
+          blockId: block.id,
+          message: `Unknown function: ${name}. Add its definition.`,
+        });
+      else if ((block.extraState?.params?.length ?? 0) !== signatures.get(name))
+        diagnostics.push({
+          blockId: block.id,
+          message: `Function ${name} requires ${signatures.get(name)} arguments. Recreate this call block.`,
+        });
+    }
+    for (const input of Object.values(block.inputs ?? {})) {
+      validateCall(input.block);
+      validateCall(input.shadow);
+    }
+    validateCall(block.next?.block);
+  };
+  savedRoots.forEach(validateCall);
+  if (diagnostics.length) return { python: "", sourceMap: {}, diagnostics };
+  const previous = choices;
+  choices = available;
+  try {
+    return compileWorkspace(script);
+  } finally {
+    choices = previous;
+  }
+}
+function compileWorkspace(script: ScriptDocument): Compilation {
   if (script.language !== "blocks") throw new Error("Expected blocks.");
   const workspace = new Blockly.Workspace();
   const result: Compilation = { python: "", sourceMap: {}, diagnostics: [] };
@@ -306,7 +532,10 @@ export function compileBlocks(script: ScriptDocument): Compilation {
     Blockly.serialization.workspaces.load(script.workspace, workspace);
   } catch (error) {
     workspace.dispose();
-    return { ...result, diagnostics: [{ message: `Cannot load blocks: ${String(error)}` }] };
+    return {
+      ...result,
+      diagnostics: [{ message: `Cannot load blocks: ${String(error)}` }],
+    };
   }
   const lines: string[] = [];
   const variables = workspace.getVariableMap().getAllVariables();
@@ -318,29 +547,66 @@ export function compileBlocks(script: ScriptDocument): Compilation {
   );
   let context = "",
     loop = 0;
+  let parameters = new Map<string, string>();
+  const procedures = new Map<
+    string,
+    { name: string; args: string[]; returns: boolean; block: Blockly.Block }
+  >();
   const emit = (line: string, depth = 0, block?: Blockly.Block) => {
     lines.push("    ".repeat(depth) + line);
     if (block) result.sourceMap[lines.length] = block.id;
   };
-  const field = (b: Blockly.Block, name: string) => String(b.getFieldValue(name) ?? "");
-  const variable = (b: Blockly.Block) => names.get(field(b, "VAR")) ?? "v_missing";
+  const field = (b: Blockly.Block, name: string) =>
+    String(b.getFieldValue(name) ?? "");
+  const variable = (b: Blockly.Block) =>
+    parameters.get(field(b, "VAR")) ??
+    names.get(field(b, "VAR")) ??
+    "v_missing";
   const issue = (b: Blockly.Block, message: string) => {
     result.diagnostics.push({ blockId: b.id, message });
     return "None";
   };
   const input = (b: Blockly.Block, name: string): string => {
     const child = b.getInputTargetBlock(name);
-    return child ? expr(child) : issue(b, `Fill the ${name.toLowerCase()} input.`);
+    return child
+      ? expr(child)
+      : issue(b, `Fill the ${name.toLowerCase()} input.`);
   };
-  const xyz = (b: Blockly.Block) => ["X", "Y", "Z"].map((n) => input(b, n)).join(", ");
+  const xyz = (b: Blockly.Block) =>
+    ["X", "Y", "Z"].map((n) => input(b, n)).join(", ");
+  const featureContext = () => ({ input, field, issue, context });
+  function call(b: Blockly.Block) {
+    const state = b.saveExtraState?.() as
+      { name?: string; params?: string[] } | undefined;
+    const p = procedures.get(state?.name ?? field(b, "NAME"));
+    if (!p)
+      return issue(
+        b,
+        "This function does not exist. Add its definition or choose another function.",
+      );
+    const args = b.inputList.filter((i) => i.name.startsWith("ARG"));
+    if (args.length !== p.args.length)
+      return issue(b, `Function requires ${p.args.length} arguments.`);
+    if (b.type === "procedures_callreturn" && !p.returns)
+      return issue(b, "This function does not return a value.");
+    return `(await ${p.name}(${args.map((i) => input(b, i.name)).join(", ")}))`;
+  }
   function expr(b: Blockly.Block): string {
+    const extension = featureExpression(b, featureContext());
+    if (extension !== undefined) return extension;
     switch (b.type) {
+      case "procedures_callreturn":
+        return call(b);
       case "math_number": {
         const n = Number(field(b, "NUM"));
-        return Number.isFinite(n) ? String(n) : issue(b, "Number must be finite.");
+        return Number.isFinite(n)
+          ? String(n)
+          : issue(b, "Number must be finite.");
       }
       case "text":
         return JSON.stringify(field(b, "TEXT"));
+      case "bark_property_key":
+        return JSON.stringify(field(b, "KEY"));
       case "logic_boolean":
         return field(b, "BOOL") === "TRUE" ? "True" : "False";
       case "variables_get":
@@ -356,7 +622,7 @@ export function compileBlocks(script: ScriptDocument): Compilation {
       case "bark_entity":
         return `game.entity(${JSON.stringify(field(b, "ENTITY"))})`;
       case "bark_other":
-        return context === "bark_touch"
+        return ["bark_touch", "bark_touch_end"].includes(context)
           ? "game.entity(other_id)"
           : issue(b, "Other entity is only available inside a touch event.");
       case "bark_actor":
@@ -395,8 +661,32 @@ export function compileBlocks(script: ScriptDocument): Compilation {
     const startLine = lines.length;
     for (let b: Blockly.Block | null = first; b; b = b.getNextBlock()) {
       if (!b.isEnabled()) continue;
-      const out = (line: string) => emit(line, depth, b!);
+      const out = (line: string) => {
+        if (!line.startsWith("elif ") && line !== "else:")
+          emit(`game._mark(${lines.length + 2})`, depth, b!);
+        emit(line, depth, b!);
+      };
+      const extension = featureStatement(b, featureContext());
+      if (extension !== undefined) {
+        out(extension);
+        continue;
+      }
       switch (b.type) {
+        case "procedures_callnoreturn":
+          out(call(b));
+          break;
+        case "procedures_ifreturn":
+          if (!context.startsWith("procedures_def")) {
+            issue(b, "Return blocks belong inside a custom function.");
+            break;
+          }
+          out(`if ${input(b, "CONDITION")}:`);
+          emit(
+            `return${b.getInput("VALUE") ? " " + input(b, "VALUE") : ""}`,
+            depth + 1,
+            b,
+          );
+          break;
         case "variables_set":
           out(`${variable(b)} = ${input(b, "VALUE")}`);
           break;
@@ -418,7 +708,9 @@ export function compileBlocks(script: ScriptDocument): Compilation {
           );
           break;
         case "bark_horizontal_velocity":
-          out(`await ${input(b, "ENTITY")}.set_velocity(${input(b, "X")}, None, ${input(b, "Z")})`);
+          out(
+            `await ${input(b, "ENTITY")}.set_velocity(${input(b, "X")}, None, ${input(b, "Z")})`,
+          );
           break;
         case "bark_forward":
         case "bark_turn":
@@ -430,7 +722,9 @@ export function compileBlocks(script: ScriptDocument): Compilation {
           out(`await ${input(b, "ENTITY")}.destroy()`);
           break;
         case "bark_spawn_do":
-          out(`await game.spawn(${JSON.stringify(field(b, "PREFAB"))}, ${xyz(b)})`);
+          out(
+            `await game.spawn(${JSON.stringify(field(b, "PREFAB"))}, ${xyz(b)})`,
+          );
           break;
         case "bark_wait":
           out(`await game.wait(${input(b, "SECONDS")})`);
@@ -453,8 +747,11 @@ export function compileBlocks(script: ScriptDocument): Compilation {
         case "bark_forever":
         case "controls_forEach": {
           if (b.type === "controls_repeat_ext")
-            out(`for _repeat_${loop++} in range(max(0, int(${input(b, "TIMES")}))):`);
-          else if (b.type === "controls_forEach") out(`for ${variable(b)} in ${input(b, "LIST")}:`);
+            out(
+              `for _repeat_${loop++} in range(max(0, int(${input(b, "TIMES")}))):`,
+            );
+          else if (b.type === "controls_forEach")
+            out(`for ${variable(b)} in ${input(b, "LIST")}:`);
           else
             out(
               `while ${b.type === "bark_forever" ? "True" : `${field(b, "MODE") === "UNTIL" ? "not " : ""}(${input(b, "BOOL")})`}:`,
@@ -471,15 +768,74 @@ export function compileBlocks(script: ScriptDocument): Compilation {
   }
   try {
     emit("from bark import game");
+    emit("import random");
     emit("");
     for (const name of names.values()) emit(`${name} = 0`);
+    for (const root of workspace.getTopBlocks(true)) {
+      if (!root.isEnabled() || !root.type.startsWith("procedures_def"))
+        continue;
+      const def = (
+        root as Blockly.Block & {
+          getProcedureDef(): [string, string[], boolean];
+        }
+      ).getProcedureDef();
+      if (procedures.has(def[0]))
+        issue(root, `Duplicate function name: ${def[0]}`);
+      else
+        procedures.set(def[0], {
+          name: `fn_${procedures.size}`,
+          args: def[1],
+          returns: def[2],
+          block: root,
+        });
+    }
+    for (const p of procedures.values()) {
+      context = p.block.type;
+      parameters = new Map();
+      p.args.forEach((name, index) => {
+        for (const variable of variables)
+          if (variable.getName() === name)
+            parameters.set(variable.getId(), `p_${index}`);
+      });
+      if (new Set(p.args).size !== p.args.length)
+        issue(p.block, "Function parameters must have distinct names.");
+      emit("");
+      emit(
+        `async def ${p.name}(${p.args.map((_, i) => `p_${i}`).join(", ")}):`,
+        0,
+        p.block,
+      );
+      const globals = [...names]
+        .filter(([id]) => !parameters.has(id))
+        .map(([, name]) => name);
+      if (globals.length) emit(`global ${globals.join(", ")}`, 1, p.block);
+      emit("await game._cooperate()", 1, p.block);
+      chain(p.block.getInputTargetBlock("STACK"), 1);
+      if (p.returns) emit(`return ${input(p.block, "RETURN")}`, 1, p.block);
+    }
+    parameters = new Map();
     let handler = 0;
     for (const root of workspace.getTopBlocks(true)) {
       if (!root.isEnabled()) continue;
+      if (root.type.startsWith("procedures_def")) continue;
       context = root.type;
       let decorator: string,
         argument = "";
       switch (root.type) {
+        case "bark_touch_end":
+          decorator = `game.on_touch_end(${JSON.stringify(field(root, "ENTITY"))})`;
+          argument = "other_id";
+          break;
+        case "bark_respawn_event":
+          decorator = `game.on_respawn(${JSON.stringify(field(root, "ENTITY"))})`;
+          break;
+        case "bark_message":
+          decorator = `game.on_message(${JSON.stringify(field(root, "NAME"))})`;
+          argument = "payload";
+          break;
+        case "bark_timer":
+          decorator = `game.on_timer(${JSON.stringify(field(root, "NAME"))})`;
+          break;
         case "bark_start":
           decorator = "game.on_start";
           break;
@@ -505,7 +861,8 @@ export function compileBlocks(script: ScriptDocument): Compilation {
       if (names.size) emit(`global ${[...names.values()].join(", ")}`, 1, root);
       chain(root.getInputTargetBlock("DO"), 1);
     }
-    if (!handler) result.diagnostics.push({ message: "Add at least one event block." });
+    if (!handler)
+      result.diagnostics.push({ message: "Add at least one event block." });
     result.python = lines.join("\n") + "\n";
   } catch (error) {
     result.diagnostics.push({ message: String(error) });
@@ -514,4 +871,7 @@ export function compileBlocks(script: ScriptDocument): Compilation {
   }
   return result;
 }
-export const blocksCompiler: ScriptCompiler = { language: "blocks", compile: compileBlocks };
+export const blocksCompiler: ScriptCompiler = {
+  language: "blocks",
+  compile: compileBlocks,
+};

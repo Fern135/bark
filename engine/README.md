@@ -181,3 +181,11 @@ Placement uses physical surface hits with a Y=0 ground-plane fallback. Candidate
 `createRuntime({ canvas, havokWasmUrl, limits: { entities: 2000, actions: 128, notifications: 32 } })` configures resource caps. Omitted limits use those defaults; overrides must be positive integers. Project load, prefab insertion, and duplicate placement check the entire entity count before committing. Limit failures use `LIMIT_EXCEEDED` and do not partially create subtrees.
 
 This version deliberately has no step climbing, moving-platform riding, jump buffering, coyote time, automatic navigation, undo history, bulk construction, terrain voxels, inventory/combat system, audio, animation clips, or scripting integration. Gameplay rules remain in `test/demo.ts`. The separate scripting project is not imported or modified by the engine.
+
+## Callback and query contracts
+
+Lifecycle cleanup removes session subscriptions and fixed-update callbacks before resetting gameplay. State and feedback notifications observe the completed cleanup, with no old actions left pending. Runtime listeners may start another session; generation checks prevent the interrupted operation from modifying that session or delivering stale notifications. A subtree destruction interrupted by world replacement returns false and preserves the restored entities. It also preserves a parent if a callback creates a new child beneath it.
+
+Motion replacement admits the new action before notifying listeners that the previous action was cancelled. A listener's newer motion takes ownership and cancels that replacement. Every admitted handle settles once, including when cancellation listeners stop or dispose the runtime.
+
+Spatial queries accept optional unsigned 32-bit `membership` and `mask` values, both defaulting to all layers. Both sides of the filter must match: query membership against the collider mask, and query mask against collider membership. Ground probes use their body's actual membership and mask, so non-colliding surfaces cannot grant a jump.

@@ -83,13 +83,15 @@ export class RuntimeWorld implements World {
         const half = vector(c.size).multiply(vector(t.scale)).scale(0.5);
         const r = rotationMatrix(quaternion(t.rotation)).m;
         const height = c.shape === "sphere" ? half.y : Math.abs(r[1]) * half.x + Math.abs(r[5]) * half.y + Math.abs(r[9]) * half.z;
-        const hit = this.raycast(t.position, { ...t.position, y: t.position.y - height - distance }, { excludeId: id, mask: c.mask });
+        const hit = this.raycast(t.position, { ...t.position, y: t.position.y - height - distance }, { excludeId: id, mask: c.mask, membership: c.membership });
         return !!hit && hit.normal.y >= 0.6;
       },
     };
   }
   private active(): void { if (this.disposed) throw new EngineError("DISPOSED", "World has been disposed."); }
   private find(id: string): Entry { this.active(); const e = this.entries.get(id); if (!e) throw new EngineError("NOT_FOUND", `Unknown entity: ${id}`); return e; }
+  /** Internal identity check for work that spans synchronous user callbacks. */
+  identity(id: string): object | undefined { return this.entries.get(id); }
   private requireBody(id: string): Entry { const e = this.find(id); if (!e.body) throw new EngineError("INVALID_STATE", "Entity has no enabled collider/body."); return e; }
   private effective(e: Entry): boolean { return e.definition.enabled && (!e.definition.parentId || this.effective(this.find(e.definition.parentId))); }
   private makeShape(c: Collider, scale: Vec3): PhysicsShape {
@@ -209,11 +211,18 @@ export class RuntimeWorld implements World {
   }
   destroy(id: string): boolean {
     this.active(); this.writable(); if (!this.entries.has(id)) return false;
-    const original = this.find(id);
+    const original = this.find(id), epoch = this.epoch;
+    const children = this.children(id).map((child) => this.find(child.id));
+    const current = () => !this.disposed && this.epoch === epoch && this.entries.get(id) === original;
     this.beforeMutation(id);
-    if (this.disposed || this.entries.get(id) !== original) return false;
-    for (const child of this.children(id)) this.destroy(child.id);
-    const e = this.find(id); this.release(e); this.entries.delete(id);
+    if (!current()) return false;
+    for (const child of children) {
+      if (this.entries.get(child.definition.id) === child && child.definition.parentId === id) this.destroy(child.definition.id);
+      if (!current()) return false;
+    }
+    // A listener may have added or replaced a child. Keep its parent intact.
+    if (this.children(id).length) return false;
+    this.release(original); this.entries.delete(id);
     this.changed(); this.events.emit("entity", { action: "destroyed", entityId: id }); this.flushEvents(); return true;
   }
   private localPose(t: Transform, parentId: string | null): Transform {
@@ -229,14 +238,16 @@ export class RuntimeWorld implements World {
   }
   private raycast(from: Vec3, to: Vec3, options: QueryOptions = {}): SpatialHit | null {
     this.active(); vec(from); vec(to);
+    this.validateQuery(options);
     const engine = this.scene.getPhysicsEngine()!;
-    const result = engine.raycast(vector(from), vector(to), { ignoreBody: options.excludeId ? this.find(options.excludeId).body : undefined, shouldHitTriggers: options.includeTriggers ?? false, collideWith: options.mask ?? 0xffffffff, membership: 0xffffffff });
+    const result = engine.raycast(vector(from), vector(to), { ignoreBody: options.excludeId ? this.find(options.excludeId).body : undefined, shouldHitTriggers: options.includeTriggers ?? false, collideWith: options.mask ?? 0xffffffff, membership: options.membership ?? 0xffffffff });
     const id = result.body ? this.bodies.get(result.body) : undefined;
     return result.hasHit && id ? { entityId: id, point: plain(result.hitPointWorld), normal: plain(result.hitNormalWorld), distance: result.hitDistance } : null;
   }
   private overlap(kind: PrimitiveShape, size: Vec3, t: Transform, options: QueryOptions = {}): SpatialHit | null {
     this.active(); validateTransform(t);
-    const c: Collider = { shape: kind, size, trigger: false, membership: 0xffffffff, mask: options.mask ?? 0xffffffff };
+    this.validateQuery(options);
+    const c: Collider = { shape: kind, size, trigger: false, membership: options.membership ?? 0xffffffff, mask: options.mask ?? 0xffffffff };
     validateEntities([defineEntity({ id: "query", collider: c, transform: t })], this.assets.project);
     const shape = this.makeShape(c, t.scale), a = new ProximityCastResult(), b = new ProximityCastResult();
     try {
@@ -244,6 +255,9 @@ export class RuntimeWorld implements World {
       const id = b.body ? this.bodies.get(b.body) : undefined;
       return b.hasHit && id ? { entityId: id, point: plain(b.hitPoint), normal: plain(b.hitNormal), distance: b.hitDistance } : null;
     } finally { shape.dispose(); }
+  }
+  private validateQuery(options: QueryOptions): void {
+    for (const n of [options.membership, options.mask]) if (n !== undefined) check(Number.isInteger(n) && n >= 0 && n <= 0xffffffff, "Query filters must be unsigned 32-bit integers.");
   }
   flushEvents(): void {
     const queue = this.pending, epoch = this.epoch; this.pending = [];

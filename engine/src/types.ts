@@ -34,7 +34,7 @@ export type RuntimeState = "empty" | "loading" | "editing" | "running" | "paused
 export type ErrorCode = "INVALID_ARGUMENT" | "NOT_FOUND" | "INVALID_STATE" | "ASSET_LOAD" | "CANCELLED" | "DISPOSED" | "CALLBACK_ERROR" | "LIMIT_EXCEEDED";
 export interface ClockSnapshot { elapsed: number; tick: number; delta: number }
 export interface ActionState { pressed: boolean; held: boolean; released: boolean }
-export interface QueryOptions { excludeId?: EntityId; includeTriggers?: boolean; mask?: number }
+export interface QueryOptions { excludeId?: EntityId; includeTriggers?: boolean; mask?: number; membership?: number }
 export interface SpatialHit { entityId: EntityId; point: Vec3; normal: Vec3; distance: number }
 export interface EngineEvents {
   state: { previous: RuntimeState; state: RuntimeState };

@@ -1,28 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createRuntime, validateProject } from "@bark/engine";
-import type { GameRuntime, ProjectDocument } from "@bark/engine";
+import { createRuntime } from "@bark/engine";
+import type { GameRuntime } from "@bark/engine";
 import havokWasmUrl from "@babylonjs/havok/lib/esm/HavokPhysics.wasm?url";
 import {
   createScriptingSession,
   compilePython,
   convertToPython,
   restoreBlocks,
-  validateDocument,
 } from "../src/index";
-import { compileBlocks, setBlockChoices } from "../src/blocks";
+import {
+  compileBlocks,
+  setBlockChoices,
+  validateBlockReferences,
+} from "../src/blocks";
 import { createEngineAdapter } from "../src/engine";
+import { choicesFor, parseGame, serializeGame } from "../src/game-file";
 import type {
   Diagnostic,
   GameDocument,
   ScriptDocument,
   ScriptingSession,
   SessionStatus,
+  Inspection,
 } from "../src/types";
 import { BlocksEditor, PythonEditor } from "./Editors";
 import { sampleDocument, samplePython } from "./sample";
+import { Feedback, PropertyInspector, LiveInspection } from "./Panels";
 
 export function App() {
   const [document, setDocument] = useState(sampleDocument);
+  const [inspecting, setInspecting] = useState(false),
+    [inspection, setInspection] = useState<Inspection>();
   const documentRef = useRef(document);
   documentRef.current = document;
   const [revision, setRevision] = useState(0),
@@ -37,12 +45,10 @@ export function App() {
     fileInput = useRef<HTMLInputElement>(null);
   const runtime = useRef<GameRuntime | null>(null),
     session = useRef<ScriptingSession | null>(null);
-  const locked = ["running", "paused", "preparing"].includes(status) || loading;
-  setBlockChoices({
-    entities: document.project.entities.map((e) => [e.name, e.id]),
-    prefabs: document.project.prefabs.map((p) => [p.id, p.id]),
-    actions: Object.keys(document.project.input).map((a) => [a, a]),
-  });
+  const exporting = useRef<AbortController | null>(null);
+  const [saving, setSaving] = useState(false);
+  const locked = ["running", "paused", "preparing"].includes(status) || loading || saving;
+  setBlockChoices(choicesFor(document.project));
   const compiled = useMemo(
     () =>
       document.script.language === "blocks"
@@ -68,17 +74,25 @@ export function App() {
       runtime.current = engine;
       await engine.load(documentRef.current.project, { signal: abort.signal });
       if (disposed) return;
-      const scripting = createScriptingSession(createEngineAdapter(engine));
+      const scripting = createScriptingSession(
+        createEngineAdapter(engine, {
+          hasFocus: () =>
+            window.document.activeElement === canvas.current &&
+            window.document.hasFocus(),
+        }),
+      );
       session.current = scripting;
       scripting.onStatus(setStatus);
       scripting.onOutput(({ text, stream }) =>
         setOutput((previous) =>
-          [...previous, ...(stream === "stderr" ? "! " + text : text).trimEnd().split("\n")].slice(
-            -250,
-          ),
+          [
+            ...previous,
+            ...(stream === "stderr" ? "! " + text : text).trimEnd().split("\n"),
+          ].slice(-250),
         ),
       );
       scripting.onDiagnostic(setDiagnostic);
+      scripting.onInspection(setInspection);
       observer = new ResizeObserver(() => engine.resize());
       observer.observe(canvas.current!);
       setEngineReady(true);
@@ -95,6 +109,7 @@ export function App() {
     return () => {
       disposed = true;
       abort.abort();
+      exporting.current?.abort();
       observer?.disconnect();
       session.current?.dispose();
       runtime.current?.dispose();
@@ -103,8 +118,12 @@ export function App() {
   }, []);
 
   function changeScript(script: ScriptDocument) {
-    if (["running", "paused", "preparing"].includes(session.current?.status ?? "")) return;
-    if (JSON.stringify(script) === JSON.stringify(documentRef.current.script)) return;
+    if (
+      ["running", "paused", "preparing"].includes(session.current?.status ?? "")
+    )
+      return;
+    if (JSON.stringify(script) === JSON.stringify(documentRef.current.script))
+      return;
     const active = session.current;
     if (active?.status === "ready") active.stop();
     setPrepared(undefined);
@@ -112,14 +131,8 @@ export function App() {
     setDocument((previous) => ({ ...previous, script }));
   }
   async function loadDocument(input: unknown) {
-    const parsed = validateDocument(input);
-    const project = validateProject(parsed.project);
-    // Validate blocks before replacing the live world; unknown block types must not silently vanish.
-    if (parsed.script.language === "blocks") {
-      const check = compileBlocks(parsed.script);
-      if (check.diagnostics.some((d) => d.message.startsWith("Cannot load blocks")))
-        throw new Error(check.diagnostics[0].message);
-    }
+    const parsed = await parseGame(JSON.stringify(input), { baseUrl: window.location.href });
+    const project = parsed.project;
     setLoading(true);
     try {
       session.current?.stop();
@@ -130,6 +143,9 @@ export function App() {
       setOutput([]);
       setPreview(false);
       setRevision((n) => n + 1);
+    } catch (error) {
+      session.current?.stop();
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -138,26 +154,75 @@ export function App() {
     Promise.resolve()
       .then(action)
       .catch((error) =>
-        setDiagnostic({ message: error instanceof Error ? error.message : String(error) }),
+        setDiagnostic({
+          message: error instanceof Error ? error.message : String(error),
+        }),
       );
   }
   async function prepare() {
+    setInspection(undefined);
     setDiagnostic(undefined);
     setOutput([]);
     if (session.current?.status === "error") session.current.stop();
     await session.current!.prepare(compiled);
     setPrepared(compiled.python);
   }
-  function save() {
-    const blob = new Blob([JSON.stringify(document, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob),
-      link = window.document.createElement("a");
-    link.href = url;
-    link.download = "bark-game.json";
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  async function save() {
+    if (!runtime.current || locked || exporting.current) return;
+    const abort = new AbortController();
+    exporting.current = abort;
+    setSaving(true);
+    try {
+      const project = runtime.current.exportProject();
+      const captured: GameDocument = {
+        version: 1,
+        project,
+        script: structuredClone(documentRef.current.script),
+      };
+      const json = await serializeGame(captured, {
+        baseUrl: window.location.href,
+        signal: abort.signal,
+      });
+      if (abort.signal.aborted) return;
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob),
+        link = window.document.createElement("a");
+      link.href = url;
+      const name = project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "bark-game";
+      link.download = `${name}.bark.json`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } finally {
+      if (exporting.current === abort) exporting.current = null;
+      if (!abort.signal.aborted) setSaving(false);
+    }
   }
   const problem = diagnostic ?? compiled.diagnostics[0];
+  function saveProperty(
+    target: string | null,
+    key: string,
+    value: unknown,
+    remove: boolean,
+  ) {
+    if (
+      !runtime.current ||
+      !["idle", "ready"].includes(session.current?.status ?? "")
+    )
+      return;
+    if (session.current?.status === "ready") session.current.stop();
+    if (remove) runtime.current.properties.remove(target, key);
+    else
+      runtime.current.properties.set(
+        target,
+        key,
+        value as import("@bark/engine").JsonValue,
+      );
+    setDocument((previous) => ({
+      ...previous,
+      project: runtime.current!.exportProject(),
+    }));
+    setPrepared(undefined);
+  }
   return (
     <div className="app">
       <header className="topbar">
@@ -173,12 +238,16 @@ export function App() {
           <span>One world. Your rules.</span>
         </div>
         <div className="file-actions">
-          <button disabled={!engineReady || locked} onClick={() => fileInput.current?.click()}>
+          <button
+            disabled={!engineReady || locked}
+            onClick={() => fileInput.current?.click()}
+          >
             Import game
           </button>
-          <button disabled={locked} onClick={save}>
-            Export game ↗
+          <button disabled={!engineReady || locked} onClick={() => run(save)}>
+            {saving ? "Packaging game…" : "Export game ↗"}
           </button>
+          <a href="/player/">Open player</a>
         </div>
       </header>
       <input
@@ -188,7 +257,8 @@ export function App() {
         hidden
         onChange={(event) => {
           const file = event.target.files?.[0];
-          if (file) run(async () => loadDocument(JSON.parse(await file.text())));
+          if (file)
+            run(async () => loadDocument(JSON.parse(await file.text())));
           event.target.value = "";
         }}
       />
@@ -212,14 +282,18 @@ export function App() {
             disabled={!["running", "paused"].includes(status)}
             onClick={() =>
               run(() =>
-                status === "paused" ? session.current!.resume() : session.current!.pause(),
+                status === "paused"
+                  ? session.current!.resume()
+                  : session.current!.pause(),
               )
             }
           >
             {status === "paused" ? "Resume" : "Pause"}
           </button>
           <button
-            disabled={!engineReady || status === "idle" || status === "disposed"}
+            disabled={
+              !engineReady || status === "idle" || status === "disposed"
+            }
             onClick={() => session.current?.stop()}
           >
             ■ Stop
@@ -234,11 +308,17 @@ export function App() {
         <section className="code-panel">
           <div className="panel-heading">
             <div className="tabs">
-              <button className={!preview ? "selected" : ""} onClick={() => setPreview(false)}>
+              <button
+                className={!preview ? "selected" : ""}
+                onClick={() => setPreview(false)}
+              >
                 {document.script.language === "blocks" ? "Blocks" : "Python"}
               </button>
               {document.script.language === "blocks" && (
-                <button className={preview ? "selected" : ""} onClick={() => setPreview(true)}>
+                <button
+                  className={preview ? "selected" : ""}
+                  onClick={() => setPreview(true)}
+                >
                   Python preview
                 </button>
               )}
@@ -269,10 +349,21 @@ export function App() {
                 {document.script.blocksBackup && (
                   <button
                     disabled={locked}
-                    onClick={() => {
-                      changeScript(restoreBlocks(document.script));
-                      setRevision((n) => n + 1);
-                    }}
+                    onClick={() =>
+                      run(() => {
+                        const restored = restoreBlocks(document.script);
+                        if (restored.language === "blocks") {
+                          const references = validateBlockReferences(
+                            restored.workspace,
+                            choicesFor(document.project),
+                          );
+                          if (references.length)
+                            throw new Error(references[0].message);
+                        }
+                        changeScript(restored);
+                        setRevision((n) => n + 1);
+                      })
+                    }
                   >
                     Restore saved blocks
                   </button>
@@ -287,13 +378,25 @@ export function App() {
                 initial={document.script.workspace}
                 disabled={locked}
                 diagnostic={problem}
-                onChange={(workspace) => changeScript({ language: "blocks", workspace })}
+                executingBlock={
+                  inspecting && ["running", "paused"].includes(status)
+                    ? inspection?.blockId
+                    : undefined
+                }
+                onChange={(workspace) =>
+                  changeScript({ language: "blocks", workspace })
+                }
               />
             ) : (
               <PythonEditor
                 source={compiled.python}
                 readOnly={locked || document.script.language === "blocks"}
                 diagnostic={problem}
+                executingLine={
+                  inspecting && ["running", "paused"].includes(status)
+                    ? inspection?.line
+                    : undefined
+                }
                 onChange={(source) => {
                   if (document.script.language === "python")
                     changeScript({ ...document.script, source });
@@ -314,9 +417,16 @@ export function App() {
             <span className="badge">3D playground</span>
           </div>
           <div className="viewport">
-            <canvas ref={canvas} tabIndex={0} aria-label="Game viewport" />
+            <canvas
+              ref={canvas}
+              tabIndex={0}
+              aria-label="Game viewport"
+              onBlur={() => session.current?.clearMovement()}
+            />
+            <Feedback runtime={engineReady ? runtime.current : null} />
             <div className="viewport-label">
-              COLLECT & CREATE<span>Find all three gems. Make something new.</span>
+              COIN GATE
+              <span>Collect six points. Open the gate. Reach the goal.</span>
             </div>
           </div>
           <div className="controls-hint">
@@ -329,6 +439,9 @@ export function App() {
             <span>
               <kbd>R</kbd> spawn
             </span>
+            <span>
+              <kbd>E</kbd> interact
+            </span>
             <small>Click the world to control your player.</small>
           </div>
           <div className="console-heading">
@@ -336,13 +449,32 @@ export function App() {
             <button onClick={() => setOutput([])}>Clear</button>
           </div>
           <pre className="console" data-testid="console">
-            {output.length ? output.join("\n") : "Your script’s messages will appear here."}
+            {output.length
+              ? output.join("\n")
+              : "Your script’s messages will appear here."}
           </pre>
+          <div className="tools-panel">
+            <PropertyInspector
+              runtime={engineReady ? runtime.current : null}
+              project={document.project}
+              status={status}
+              onSave={saveProperty}
+            />
+            <LiveInspection
+              enabled={inspecting}
+              snapshot={inspection}
+              onToggle={(enabled) => {
+                setInspecting(enabled);
+                session.current?.setInspection(enabled);
+              }}
+            />
+          </div>
         </section>
       </main>
       <footer>
         <span>
-          LOCAL PYTHON RUNTIME <span className="dot">●</span> No server execution
+          LOCAL PYTHON RUNTIME <span className="dot">●</span> No server
+          execution
         </span>
         <div>
           <button

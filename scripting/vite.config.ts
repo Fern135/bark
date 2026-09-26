@@ -17,10 +17,11 @@ export default defineConfig(({ mode }) => ({
               index: resolve("src/index.ts"),
               blocks: resolve("src/blocks.ts"),
               engine: resolve("src/engine.ts"),
+              player: resolve("src/player.ts"),
             },
             formats: ["es"],
           },
           rolldownOptions: { external: [/^@bark\/engine/, /^blockly/] },
         }
-      : { outDir: "dist-playground" },
+      : { outDir: "dist-playground", rolldownOptions: { input: { lab: resolve("index.html"), player: resolve("player/index.html") } } },
 }));

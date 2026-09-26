@@ -9,6 +9,7 @@ import type {
   SessionStatus,
   WorkerMessage,
   WorkerPort,
+  Inspection,
 } from "./types.js";
 
 export const SESSION_LIMITS = { commands: 256, events: 256 };
@@ -20,15 +21,21 @@ export function createScriptingSession(
     generation = 0,
     worker: WorkerPort | undefined;
   let compiled: Compilation = { python: "", sourceMap: {}, diagnostics: [] };
-  let pendingPrepare: { resolve(): void; reject(error: Error): void } | undefined;
+  let pendingPrepare:
+    { resolve(): void; reject(error: Error): void } | undefined;
   let commands: Extract<WorkerMessage, { type: "request" }>[] = [];
   let tickInFlight = false,
     pendingTick: Clock | undefined,
     eventsInFlight = 0,
     internal = false;
   let cleanup: (() => void)[] = [];
+  let outstanding = 0,
+    inspect = false;
+  const inspections = new Set<(snapshot: Inspection) => void>();
   const statuses = new Set<(value: SessionStatus) => void>();
-  const outputs = new Set<(value: { text: string; stream: "stdout" | "stderr" }) => void>();
+  const outputs = new Set<
+    (value: { text: string; stream: "stdout" | "stderr" }) => void
+  >();
   const diagnostics = new Set<(value: Diagnostic) => void>();
   const setStatus = (value: SessionStatus) => {
     status = value;
@@ -46,6 +53,8 @@ export function createScriptingSession(
   };
   function clear(reason: string) {
     generation++;
+    outstanding = 0;
+    adapter.clearMovement?.();
     worker?.terminate();
     worker = undefined;
     commands = [];
@@ -59,7 +68,9 @@ export function createScriptingSession(
   }
   function fail(diagnostic: Diagnostic) {
     if (status === "disposed" || status === "error") return;
-    const blockId = diagnostic.line ? compiled.sourceMap[diagnostic.line] : undefined;
+    const blockId = diagnostic.line
+      ? compiled.sourceMap[diagnostic.line]
+      : undefined;
     clear(diagnostic.message);
     if (adapter.state === "running") lifecycle(() => adapter.pause());
     setStatus("error");
@@ -78,7 +89,9 @@ export function createScriptingSession(
   function event(event: GameplayEvent) {
     if (status !== "running") return;
     if (++eventsInFlight > SESSION_LIMITS.events) {
-      fail({ message: "Script event queue overflow. Add waits or simplify handlers." });
+      fail({
+        message: "Script event queue overflow. Add waits or simplify handlers.",
+      });
       return;
     }
     post({ type: "event", event } as Omit<HostMessage, "session">);
@@ -101,11 +114,23 @@ export function createScriptingSession(
           } as Omit<HostMessage, "session">);
           return;
         }
-        if (commands.length >= SESSION_LIMITS.commands) {
+        if (outstanding >= SESSION_LIMITS.commands) {
           fail({ message: "Script command queue overflow." });
           return;
         }
         commands.push(message);
+        outstanding++;
+        return;
+      case "inspection":
+        if (inspect)
+          inspections.forEach((fn) =>
+            fn({
+              ...message.snapshot,
+              blockId: message.snapshot.line
+                ? compiled.sourceMap[message.snapshot.line]
+                : undefined,
+            }),
+          );
         return;
       case "output":
         outputs.forEach((fn) => fn(message));
@@ -128,13 +153,17 @@ export function createScriptingSession(
   const offState = adapter.onState((state) => {
     if (internal || status === "disposed") return;
     if (state === "paused" && status === "running") {
+      adapter.clearMovement?.();
       post({ type: "pause" });
       setStatus("paused");
     } else if (state === "running" && status === "paused") {
       post({ type: "resume" });
       setStatus("running");
     } else if (state === "error")
-      fail({ message: "The engine entered an error state. Stop to restore the world." });
+      fail({
+        message:
+          "The engine entered an error state. Stop to restore the world.",
+      });
     else if (["loading", "editing", "empty", "disposed"].includes(state)) {
       clear("The engine world changed.");
       setStatus(state === "disposed" ? "disposed" : "idle");
@@ -166,14 +195,19 @@ export function createScriptingSession(
       try {
         worker =
           options.workerFactory?.() ??
-          new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+          new Worker(new URL("./worker.ts", import.meta.url), {
+            type: "module",
+          });
         worker.onmessage = (e) => receive(e.data);
-        worker.onerror = (e) => fail({ message: e.message || "Python worker failed to load." });
-        const base = typeof location === "undefined" ? "http://localhost/" : location.href;
+        worker.onerror = (e) =>
+          fail({ message: e.message || "Python worker failed to load." });
+        const base =
+          typeof location === "undefined" ? "http://localhost/" : location.href;
         post({
           type: "prepare",
           python: compilation.python,
           runtimeUrl: new URL(options.runtimeUrl ?? "/pyodide/", base).href,
+          inspect,
         } as Omit<HostMessage, "session">);
       } catch (error) {
         fail({ message: String(error) });
@@ -197,12 +231,33 @@ export function createScriptingSession(
                 break;
               }
               try {
-                post({
-                  type: "response",
-                  request: command.request,
-                  result: adapter.execute(command.operation) ?? null,
-                } as Omit<HostMessage, "session">);
+                const respond = (result?: unknown, error?: string) => {
+                  if (command.session !== generation || !worker) return;
+                  outstanding--;
+                  post({
+                    type: "response",
+                    request: command.request,
+                    result: result ?? null,
+                    error,
+                  } as Omit<HostMessage, "session">);
+                };
+                const result = adapter.execute(command.operation);
+                if (
+                  result &&
+                  typeof (result as PromiseLike<unknown>).then === "function"
+                )
+                  Promise.resolve(result).then(
+                    (value) => respond(value),
+                    (error) =>
+                      respond(
+                        undefined,
+                        error instanceof Error ? error.message : String(error),
+                      ),
+                  );
+                else respond(result);
               } catch (error) {
+                if (command.session !== generation) break;
+                outstanding--;
                 post({
                   type: "response",
                   request: command.request,
@@ -222,6 +277,7 @@ export function createScriptingSession(
     },
     pause() {
       requireStatus("running");
+      adapter.clearMovement?.();
       lifecycle(() => adapter.pause());
       post({ type: "pause" });
       setStatus("paused");
@@ -235,19 +291,35 @@ export function createScriptingSession(
     stop() {
       if (status === "disposed") return;
       clear("Script stopped.");
-      if (!["disposed", "empty"].includes(adapter.state)) lifecycle(() => adapter.stop());
+      if (!["disposed", "empty"].includes(adapter.state))
+        lifecycle(() => adapter.stop());
       setStatus("idle");
     },
     dispose() {
       if (status !== "disposed") {
         clear("Session disposed.");
-        if (["running", "paused", "error"].includes(adapter.state)) lifecycle(() => adapter.stop());
+        if (["running", "paused", "error"].includes(adapter.state))
+          lifecycle(() => adapter.stop());
         setStatus("disposed");
       }
       offState();
       statuses.clear();
       outputs.clear();
       diagnostics.clear();
+      inspections.clear();
+    },
+    clearMovement() {
+      adapter.clearMovement?.();
+    },
+    setInspection(enabled) {
+      inspect = enabled;
+      post({ type: "inspect", enabled } as Omit<HostMessage, "session">);
+    },
+    onInspection(fn) {
+      inspections.add(fn);
+      return () => {
+        inspections.delete(fn);
+      };
     },
     onStatus(fn) {
       statuses.add(fn);

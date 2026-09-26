@@ -1,4 +1,9 @@
 import { test, expect, type Page } from "@playwright/test";
+import { verifyReferenceImports } from "./reference-validation";
+
+test("invalid imports preserve saved blocks and incoming project references compile", async ({ page }) => {
+  await verifyReferenceImports(page);
+});
 
 async function open(page: Page) {
   await page.goto("/");
@@ -88,6 +93,7 @@ test("infinite Python loop cannot freeze Stop or the editor", async ({ page }) =
     page,
     "from bark import game\n@game.on_start\nasync def start():\n    while True:\n        pass\n",
   );
+  await page.evaluate(() => (window as any).__barkTest.session.setInspection(true));
   await play(page);
   await page.waitForTimeout(400);
   await page.getByRole("button", { name: "■ Stop", exact: true }).click({ timeout: 3000 });

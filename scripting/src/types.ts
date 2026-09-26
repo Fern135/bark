@@ -1,8 +1,21 @@
 export type Vec3 = { x: number; y: number; z: number };
+export type JsonValue =
+  null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+export type Inspection = {
+  line?: number;
+  blockId?: string;
+  globals: Record<string, unknown>;
+  locals: Record<string, unknown>;
+  activity: { handler: string; event: string; phase: string; time: number }[];
+};
 export type Clock = { elapsed: number; tick: number; delta: number };
 export type ScriptDocument =
   | { language: "blocks"; workspace: Record<string, unknown> }
-  | { language: "python"; source: string; blocksBackup?: Record<string, unknown> };
+  | {
+      language: "python";
+      source: string;
+      blocksBackup?: Record<string, unknown>;
+    };
 export interface GameDocument<Project = unknown> {
   version: 1;
   project: Project;
@@ -24,6 +37,34 @@ export interface ScriptCompiler<Input = ScriptDocument> {
   compile(script: Input): Compilation;
 }
 export type Operation =
+  | { op: "walk" | "teleport" | "set_spawn"; id: string; vector: Vec3 }
+  | { op: "jump" | "respawn"; id: string }
+  | { op: "target"; actor: string }
+  | { op: "interact"; actor: string; target?: string }
+  | {
+      op: "glide_to";
+      id: string;
+      vector: Vec3;
+      seconds: number;
+      easing: "linear" | "easeIn" | "easeOut" | "easeInOut";
+    }
+  | {
+      op: "rotate_to";
+      id: string;
+      degrees: number;
+      seconds: number;
+      easing: "linear" | "easeIn" | "easeOut" | "easeInOut";
+    }
+  | {
+      op: "property";
+      id: string | null;
+      action: "get" | "has" | "set" | "change" | "remove" | "list";
+      key: string;
+      value?: JsonValue;
+    }
+  | { op: "set_hud"; key: string; label: string; value: JsonValue }
+  | { op: "remove_hud"; key: string }
+  | { op: "notify"; text: string; seconds: number }
   | { op: "move"; id: string; vector: Vec3; space: "local" | "world" }
   | { op: "turn"; id: string; degrees: number }
   | {
@@ -38,8 +79,13 @@ export type Operation =
   | { op: "spawn"; prefab: string; position: Vec3 };
 export type GameplayEvent =
   | { type: "start" }
-  | { type: "input"; action: string; state: { pressed: boolean; held: boolean; released: boolean } }
-  | { type: "touch"; entityId: string; otherId: string }
+  | {
+      type: "input";
+      action: string;
+      state: { pressed: boolean; held: boolean; released: boolean };
+    }
+  | { type: "touch" | "touch_end"; entityId: string; otherId: string }
+  | { type: "respawn"; entityId: string }
   | { type: "interact"; entityId: string; actorId?: string };
 export type AdapterState =
   "empty" | "loading" | "editing" | "running" | "paused" | "error" | "disposed";
@@ -50,7 +96,8 @@ export interface EngineAdapter {
   pause(): void;
   resume(): void;
   stop(): void;
-  execute(operation: Operation): unknown;
+  execute(operation: Operation): unknown | Promise<unknown>;
+  clearMovement?(): void;
   onUpdate(listener: (clock: Clock) => void): () => void;
   onEvent(listener: (event: GameplayEvent) => void): () => void;
   onState(listener: (state: AdapterState) => void): () => void;
@@ -58,7 +105,8 @@ export interface EngineAdapter {
 export type SessionStatus =
   "idle" | "preparing" | "ready" | "running" | "paused" | "error" | "disposed";
 export type HostMessage = { session: number } & (
-  | { type: "prepare"; python: string; runtimeUrl: string }
+  | { type: "prepare"; python: string; runtimeUrl: string; inspect?: boolean }
+  | { type: "inspect"; enabled: boolean }
   | { type: "event"; event: GameplayEvent }
   | { type: "tick"; clock: Clock }
   | { type: "pause" | "resume" }
@@ -69,6 +117,7 @@ export type WorkerMessage = { session: number } & (
   | { type: "request"; request: number; operation: Operation }
   | { type: "output"; text: string; stream: "stdout" | "stderr" }
   | { type: "error"; diagnostic: Diagnostic }
+  | { type: "inspection"; snapshot: Inspection }
 );
 export interface WorkerPort {
   postMessage(message: HostMessage): void;
@@ -84,7 +133,12 @@ export interface ScriptingSession {
   resume(): void;
   stop(): void;
   dispose(): void;
+  setInspection(enabled: boolean): void;
+  clearMovement(): void;
+  onInspection(listener: (snapshot: Inspection) => void): () => void;
   onStatus(listener: (status: SessionStatus) => void): () => void;
-  onOutput(listener: (output: { text: string; stream: "stdout" | "stderr" }) => void): () => void;
+  onOutput(
+    listener: (output: { text: string; stream: "stdout" | "stderr" }) => void,
+  ): () => void;
   onDiagnostic(listener: (diagnostic: Diagnostic) => void): () => void;
 }

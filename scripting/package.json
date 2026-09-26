@@ -7,6 +7,7 @@
     "dist",
     "scripts",
     "ENGINE-CONTRACT.md",
+    "PLAYER.md",
     "public/pyodide"
   ],
   "exports": {
@@ -17,6 +18,10 @@
     "./blocks": {
       "types": "./dist/types/blocks.d.ts",
       "import": "./dist/blocks.js"
+    },
+    "./player": {
+      "types": "./dist/types/player.d.ts",
+      "import": "./dist/player.js"
     },
     "./engine": {
       "types": "./dist/types/engine.d.ts",

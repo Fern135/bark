@@ -1,4 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { verifyReferenceImports } from "./reference-validation";
+
+test("production rejects invalid references and restores valid imported projects", async ({ page }) => {
+  await verifyReferenceImports(page);
+});
 test("production playground serves local WASM, worker, blocks, Python, and save files", async ({
   page,
 }) => {

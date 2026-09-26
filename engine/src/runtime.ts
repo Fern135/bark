@@ -83,9 +83,24 @@ export class Runtime implements GameRuntime {
   private alive(): void { if (this.status === "disposed") throw new EngineError("DISPOSED", "Runtime has been disposed."); }
   private bundle(): Bundle { this.alive(); if (!this.current) throw new EngineError("INVALID_STATE", "No world is loaded."); return this.current; }
   private writable = (): void => { this.alive(); if (!["editing", "running", "paused"].includes(this.status)) throw new EngineError("INVALID_STATE", `Cannot modify world while ${this.status}.`); };
-  private transition(state: RuntimeState): void { const previous = this.status; if (state === previous) return; this.status = state; this.events.emit("state", { previous, state }); }
-  private fail(error: EngineError): void { if (this.status === "disposed" || this.status === "error") return; this.input.setEnabled(false); this.transition("error"); this.placement.cancel(); this.gameplay.reset(); this.events.emit("error", { code: error.code, message: error.message }); }
-  private resetSession(): void { this.sessionEpoch++; this.input.setEnabled(false); this.placement.cancel(); this.gameplay.reset(); this.events.clear(true); this.updates.clear(); this.accumulator = 0; this.time = { elapsed: 0, tick: 0, delta: 1 / 60 }; }
+  private transition(state: RuntimeState, feedback = false): void {
+    const previous = this.status, epoch = this.sessionEpoch;
+    this.status = state;
+    const current = () => this.sessionEpoch === epoch && this.status === state;
+    if (state !== previous) this.events.emit("state", { previous, state }, current);
+    if (feedback && current()) this.gameplay.publish();
+  }
+  private fail(error: EngineError): void {
+    if (this.status === "disposed" || this.status === "error") return;
+    this.invalidateLoad(); this.resetSession(false); const epoch = this.sessionEpoch;
+    this.transition("error", true);
+    if (this.sessionEpoch === epoch && this.state === "error") this.events.emit("error", { code: error.code, message: error.message }, () => this.sessionEpoch === epoch);
+  }
+  private resetSession(resetClock = true): void {
+    this.sessionEpoch++; this.events.clear(true); this.updates.clear();
+    this.input.setEnabled(false); this.placement.cancel(); this.gameplay.reset(); this.accumulator = 0;
+    if (resetClock) this.time = { elapsed: 0, tick: 0, delta: 1 / 60 };
+  }
   private invalidateLoad(): void { this.generation++; this.loading?.abort(); this.loading = null; }
   private changed(bundle: Bundle): void {
     if (this.constructing) return;
@@ -108,7 +123,11 @@ export class Runtime implements GameRuntime {
     if (project.entities.length > this.limits.entities) throw new EngineError("LIMIT_EXCEEDED", `Entity limit is ${this.limits.entities}.`);
     this.invalidateLoad(); const generation = this.generation, controller = new AbortController(); this.loading = controller;
     const abort = () => controller.abort(); options.signal?.addEventListener("abort", abort, { once: true });
-    this.resetSession(); this.transition("loading");
+    this.resetSession(); this.transition("loading", true);
+    if (generation !== this.generation) {
+      options.signal?.removeEventListener("abort", abort);
+      throw new EngineError("CANCELLED", "Load superseded.");
+    }
     const scene = new Scene(this.engine); scene.physicsEnabled = false;
     const assets = new Assets(scene, project);
     let staged: Bundle | null = null;
@@ -151,12 +170,12 @@ export class Runtime implements GameRuntime {
   play(): void {
     this.alive(); if (this.status !== "editing") throw new EngineError("INVALID_STATE", "Play requires editing mode.");
     this.resetSession(); this.restore(); this.current!.cameras.set(this.authored!.cameras);
-    this.input.setEnabled(true); this.transition("running");
+    this.input.setEnabled(true); this.transition("running", true);
   }
   pause(): void { if (this.status !== "running") throw new EngineError("INVALID_STATE", "Pause requires a running session."); this.input.setEnabled(false); this.gameplay.clearIntents(); this.accumulator = 0; this.transition("paused"); }
   resume(): void { if (this.status !== "paused") throw new EngineError("INVALID_STATE", "Resume requires a paused session."); this.input.setEnabled(true); this.accumulator = 0; this.transition("running"); }
-  stop(): void { this.alive(); this.invalidateLoad(); this.resetSession(); this.restore(); this.transition(this.current ? "editing" : "empty"); this.resize(); }
-  unload(): void { this.alive(); this.invalidateLoad(); this.resetSession(); this.release(this.current); this.current = null; this.authored = null; this.propertyValues = {}; this.transition("empty"); }
+  stop(): void { this.alive(); this.invalidateLoad(); this.resetSession(); this.restore(); this.resize(); this.transition(this.current ? "editing" : "empty", true); }
+  unload(): void { this.alive(); this.invalidateLoad(); this.resetSession(); this.release(this.current); this.current = null; this.authored = null; this.propertyValues = {}; this.transition("empty", true); }
   exportProject(): ProjectDocument { this.bundle(); return structuredClone(this.authored!); }
   configure(changes: Partial<SceneSettings>): void { this.writable(); const bundle = this.bundle(), next = { ...bundle.settings, ...structuredClone(changes) }; validateSettings(next); this.applySettings(bundle, next); if (this.status === "editing") this.authored!.settings = next; this.resize(); }
   resize(): void {
@@ -172,8 +191,10 @@ export class Runtime implements GameRuntime {
       const epoch = this.sessionEpoch;
       this.accumulator -= 1 / 60;
       this.input.sample();
+      if (this.status !== "running" || epoch !== this.sessionEpoch) break;
       const next = { delta: 1 / 60, tick: this.time.tick + 1, elapsed: (this.time.tick + 1) / 60 };
       for (const update of [...this.updates]) {
+        if (epoch !== this.sessionEpoch) break;
         if (!this.updates.has(update) || this.status !== "running") continue;
         try { update({ ...next }); } catch (error) { this.fail(new EngineError("CALLBACK_ERROR", error instanceof Error ? error.message : String(error))); }
       }
@@ -209,7 +230,7 @@ export class Runtime implements GameRuntime {
   private release(bundle: Bundle | null): void { if (!bundle) return; bundle.cameras.dispose(); bundle.world.dispose(); bundle.shadow?.dispose(); bundle.assets.dispose(); bundle.scene.dispose(); }
   dispose(): void {
     if (this.status === "disposed") return;
-    this.invalidateLoad(); this.resetSession(); this.engine.stopRenderLoop(this.render); this.input.dispose(); this.release(this.current); this.current = null; this.authored = null; this.propertyValues = {}; this.transition("disposed"); this.events.clear(); this.engine.dispose();
+    this.invalidateLoad(); this.resetSession(); this.engine.stopRenderLoop(this.render); this.input.dispose(); this.release(this.current); this.current = null; this.authored = null; this.propertyValues = {}; this.engine.dispose(); this.transition("disposed", true); this.events.clear();
   }
 }
 export async function createRuntime({ canvas, havokWasmUrl, signal, limits }: RuntimeOptions): Promise<GameRuntime> {

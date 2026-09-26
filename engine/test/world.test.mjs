@@ -29,6 +29,87 @@ async function fixture(t, p = project(), limits = {}) {
 }
 function near(actual, expected, tolerance = 0.07) { assert.ok(Math.abs(actual - expected) < tolerance, `${actual} should be near ${expected}`); }
 
+test("subtree destruction cannot cross Stop or delete callback-created replacements", async (t) => {
+  const p = createProject(); p.entities = [defineEntity({ id: "parent" }), defineEntity({ id: "child", parentId: "parent" })];
+  const { runtime: r } = await fixture(t, p); const authored = r.exportProject(); r.play();
+  r.on("entity", (e) => { if (e.action === "destroyed" && e.entityId === "child") r.stop(); }, { scope: "session" });
+  assert.equal(r.world.destroy("parent"), false);
+  assert.deepEqual(r.exportProject(), authored); assert.equal(r.world.get("child").parentId, "parent");
+  r.stop(); r.play();
+  r.on("entity", (e) => { if (e.action === "destroyed" && e.entityId === "child") r.world.spawn({ id: "child", parentId: "parent", name: "Replacement" }); }, { scope: "session" });
+  assert.equal(r.world.destroy("parent"), false); assert.equal(r.world.get("child").name, "Replacement");
+  assert.equal(r.world.get("parent").id, "parent"); r.stop(); assert.deepEqual(r.exportProject(), authored);
+});
+
+test("motion cancellation listeners may replace the replacement without stranding handles", async (t) => {
+  const { runtime: r, step } = await fixture(t, gameplayProject()); r.play();
+  const first = r.motion.glideTo("door", v(1, 2, 3), 1); let nested;
+  r.on("motion", (e) => { if (e.actionId === first.id) nested = r.motion.glideTo("door", v(3, 2, 3), 0.1); });
+  const second = r.motion.glideTo("door", v(2, 2, 3), 1);
+  assert.equal((await first.done).status, "cancelled"); assert.equal((await second.done).status, "cancelled");
+  second.cancel(); step(10); assert.equal((await nested.done).status, "completed"); near(r.world.get("door").transform.position.x, 3);
+});
+
+test("replacement handles settle when cancellation listeners tear down or change the entity", async (t) => {
+  for (const end of [r => r.stop(), r => r.unload(), r => r.dispose(), r => r.load(project()), r => r.world.destroy("door"), r => r.world.update("door", { enabled: false })]) {
+    const { runtime: r } = await fixture(t, gameplayProject()); r.play();
+    const first = r.motion.glideTo("door", v(1, 2, 3), 1); let pending;
+    r.on("motion", (e) => { if (e.actionId === first.id) pending = end(r); }, { scope: "session" });
+    const second = r.motion.glideTo("door", v(2, 2, 3), 1);
+    assert.equal((await first.done).status, "cancelled"); assert.equal((await second.done).status, "cancelled");
+    await pending; second.cancel();
+  }
+});
+
+test("teardown feedback runs only after cleanup and cannot admit abandoned actions", async (t) => {
+  for (const [end, state] of [[r => r.stop(), "editing"], [r => r.unload(), "empty"], [r => r.dispose(), "disposed"], [r => r.load(project()), "loading"]]) {
+    const { runtime: r } = await fixture(t, gameplayProject()); r.play();
+    const action = r.motion.glideTo("door", v(1, 2, 3), 1); let sessionCalls = 0; const observations = [];
+    r.on("feedback", () => { sessionCalls++; r.motion.glideTo("door", v(5, 2, 3), 1); }, { scope: "session" });
+    const off = r.on("feedback", () => {
+      let code;
+      try { r.motion.glideTo("door", v(4, 2, 3), 1); } catch (error) { code = error.code; }
+      observations.push({ state: r.state, tick: r.clock.tick, code });
+    });
+    await end(r); off(); assert.deepEqual(observations, [{ state, tick: 0, code: state === "disposed" ? "DISPOSED" : "INVALID_STATE" }]);
+    assert.equal(sessionCalls, 0); assert.equal((await action.done).status, "cancelled");
+  }
+});
+
+test("a lifecycle listener starting a new session keeps its feedback and actions", async (t) => {
+  const { runtime: r, step } = await fixture(t, gameplayProject()); r.play(); let action, restart = true;
+  r.on("state", (e) => { if (e.state === "editing" && restart) { restart = false; r.play(); r.feedback.setHud("new", "New session", 1); action = r.motion.glideTo("door", v(2, 3, 4), 0.1); } });
+  const snapshots = []; const off = r.on("feedback", (e) => snapshots.push(e));
+  r.stop(); assert.equal(r.state, "running"); assert.equal(snapshots.at(-1).hud.new.value, 1);
+  step(10); assert.equal((await action.done).status, "completed"); off();
+});
+
+test("target delivery tolerates deleting, replacing and removing another character", async (t) => {
+  for (const change of [r => r.world.destroy("other"), r => { const e = r.world.get("other"); r.world.destroy("other"); r.world.spawn(e); }, r => r.world.update("other", { character: null })]) {
+    const p = gameplayProject(); const other = structuredClone(p.entities.find(e => e.id === "player")); other.id = "other"; other.transform.position.x = 5; p.entities.push(other);
+    const { runtime: r, step } = await fixture(t, p); r.play(); let changed = false;
+    r.on("target", (e) => { if (e.actorId === "player" && !changed) { changed = true; change(r); } });
+    step(2); assert.ok(changed); assert.equal(r.state, "running"); assert.equal(r.clock.tick, 2);
+  }
+});
+
+test("ground probes and spatial queries honor both sides of collision filtering", async (t) => {
+  const p = createProject(); p.entities = [
+    defineEntity({ id: "floor", transform: { position: v(0, -0.5, 0) }, collider: { size: v(10, 1, 10), membership: 2, mask: 4 } }),
+    defineEntity({ id: "player", transform: { position: v(0, 1.01, 0) }, collider: { shape: "capsule", size: v(1, 2, 1), membership: 1, mask: 2 }, body: { rotationLocked: true }, character: {} }),
+  ];
+  const { runtime: r, step } = await fixture(t, p); r.play();
+  assert.equal(r.physics.grounded("player"), false); assert.equal(r.characters.get("player").grounded, false); assert.equal(r.characters.jump("player"), false);
+  assert.equal(r.physics.raycast(v(2, 2, 0), v(2, -2, 0), { membership: 1, mask: 2 }), null);
+  const pose = { position: v(2, -0.5, 0), rotation: { x: 0, y: 0, z: 0, w: 1 }, scale: size };
+  assert.equal(r.physics.overlap("box", size, pose, { membership: 1, mask: 2 }), null);
+  assert.equal(r.physics.overlap("box", size, pose, { membership: 4, mask: 2 }).entityId, "floor");
+  r.world.update("floor", { collider: { mask: 1 } });
+  assert.equal(r.physics.grounded("player"), true); assert.equal(r.characters.get("player").grounded, true);
+  assert.equal(r.characters.jump("player"), true); step(5); assert.ok(r.physics.velocity("player").y > 0);
+  assert.throws(() => r.physics.raycast(v(2, 2, 0), v(2, -2, 0), { membership: -1 }), /unsigned/);
+});
+
 test("lifecycle separates authored state, pauses time, and restores exact IDs and definitions", async (t) => {
   const { runtime: r, step } = await fixture(t);
   assert.equal(r.state, "editing"); step(); assert.equal(r.clock.tick, 0);

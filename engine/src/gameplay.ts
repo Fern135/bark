@@ -81,7 +81,7 @@ export class Gameplay {
     const radius = c.size.x * s * 0.3, bottom = c.size.y * s / 2;
     return [[0, 0], [radius, 0], [-radius, 0], [0, radius], [0, -radius]].some(([x, z]) => {
       const start = { x: p.x + x, y: p.y - bottom + 0.2, z: p.z + z };
-      const hit = this.world().physics.raycast(start, { ...start, y: start.y - 0.3 }, { excludeId: id, mask: c.mask });
+      const hit = this.world().physics.raycast(start, { ...start, y: start.y - 0.3 }, { excludeId: id, mask: c.mask, membership: c.membership });
       return !!hit && hit.normal.y >= Math.cos(e.character!.slopeLimit * Math.PI / 180);
     });
   }
@@ -98,19 +98,24 @@ export class Gameplay {
     this.running(); check(Number.isFinite(seconds) && seconds > 0, "Motion duration must be positive."); check(["linear", "easeIn", "easeOut", "easeInOut"].includes(easing), "Unknown easing.");
     const entity = this.world().get(id); check(entity.effectiveEnabled && !entity.character && (!entity.collider || entity.body?.mode === "kinematic"), "Motion requires an enabled collider-free entity or kinematic body.");
     if (!this.motions.has(id) && this.motions.size >= this.limits.actions) throw new EngineError("LIMIT_EXCEEDED", "Timed action limit reached.");
-    this.cancel(id, "replaced");
+    const previous = this.motions.get(id);
+    if (previous) this.finish(previous, { status: "cancelled", reason: "replaced" }, false);
     let settle!: (result: ActionResult) => void;
     const done = new Promise<ActionResult>((resolve) => { settle = resolve; });
     const start = { position: entity.worldTransform.position, rotation: entity.worldTransform.rotation };
     const action: Motion = { id: crypto.randomUUID(), entityId: id, start, end: structuredClone({ ...start, ...destination }), duration: seconds, elapsed: 0, easing, settle };
     this.motions.set(id, action);
+    // Publish only after admission: callbacks can replace or cancel this owner safely.
+    const epoch = this.epoch;
+    if (previous) this.events.emit("motion", { status: "cancelled", reason: "replaced", actionId: previous.id, entityId: id }, () => epoch === this.epoch);
     return { id: action.id, done, cancel: () => { if (this.motions.get(id) === action) this.cancel(id, "cancelled by caller"); } };
   }
   private finish(action: Motion, result: ActionResult, emit = true): void {
     if (this.motions.get(action.entityId) !== action) return;
     this.motions.delete(action.entityId);
     if (this.world().list().some((e) => e.id === action.entityId)) this.world().stopDrive(action.entityId);
-    action.settle(result); if (emit) this.events.emit("motion", { ...result, actionId: action.id, entityId: action.entityId });
+    action.settle(result); const epoch = this.epoch;
+    if (emit) this.events.emit("motion", { ...result, actionId: action.id, entityId: action.entityId }, () => epoch === this.epoch);
   }
   private cancel(id: string, reason: string): void { const action = this.motions.get(id); if (action) this.finish(action, { status: "cancelled", reason }); }
   mutation(id: string, changes?: EntityChanges): void {
@@ -159,9 +164,14 @@ export class Gameplay {
     const completed = this.completed; this.completed = [];
     for (const action of completed) { if (epoch !== this.epoch) return; this.finish(action, { status: "completed" }); }
     if (epoch !== this.epoch) return;
-    const characters = this.world().list().filter((e) => e.character);
+    const world = this.world();
+    const characters = world.list().filter((e) => e.character).map((e) => ({ id: e.id, identity: world.identity(e.id) }));
     for (const e of characters) {
       if (epoch !== this.epoch) return;
+      if (world.identity(e.id) !== e.identity || !world.get(e.id).character) {
+        if (this.targets.delete(e.id)) this.events.emit("target", { actorId: e.id, targetId: null });
+        continue;
+      }
       const target = this.target(e.id);
       if (this.targets.get(e.id) !== target) {
         this.targets.set(e.id, target);
@@ -169,7 +179,7 @@ export class Gameplay {
       }
     }
     if (epoch !== this.epoch) return;
-    for (const id of [...this.targets.keys()]) if (!characters.some((e) => e.id === id)) {
+    for (const id of [...this.targets.keys()]) if (!world.identity(id) || !world.get(id).character) {
       this.targets.delete(id); this.events.emit("target", { actorId: id, targetId: null }); if (epoch !== this.epoch) return;
     }
     const primary = this.world().list().find((e) => e.character && e.effectiveEnabled), target = primary ? this.target(primary.id) : null;
@@ -180,7 +190,7 @@ export class Gameplay {
   reset(): void {
     this.epoch++; const motions = [...this.motions.values()]; this.completed = [];
     for (const action of motions) this.finish(action, { status: "cancelled", reason: "session ended" }, false);
-    this.clearIntents(); this.airborne.clear(); this.targets.clear(); this.state = emptyFeedback(); this.publish();
+    this.clearIntents(); this.airborne.clear(); this.targets.clear(); this.state = emptyFeedback();
   }
-  private publish(): void { this.events.emit("feedback", this.feedback.get()); }
+  publish(): void { const epoch = this.epoch; this.events.emit("feedback", this.feedback.get(), () => epoch === this.epoch); }
 }

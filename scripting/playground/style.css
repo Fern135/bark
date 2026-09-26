@@ -397,3 +397,96 @@ footer button {
     flex-wrap: wrap;
   }
 }
+.game-feedback {
+  position: absolute;
+  inset: 65px 16px 16px;
+  pointer-events: none;
+  color: white;
+  font-size: 12px;
+}
+.hud {
+  display: flex;
+  gap: 8px;
+}
+.hud span,
+.notifications div,
+.interaction-prompt {
+  background: #14312ee6;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+.notifications {
+  position: absolute;
+  right: 0;
+  bottom: 40px;
+  display: grid;
+  gap: 6px;
+  max-width: 80%;
+}
+.interaction-prompt {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.tools-panel {
+  flex-shrink: 0;
+  max-height: 240px;
+  overflow: auto;
+  border-top: 1px solid #cfdbd5;
+}
+.inspector {
+  padding: 8px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid #e1e8e4;
+}
+.inspector summary {
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.inspector fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border: 0;
+  padding: 8px 0;
+}
+.inspector input:not([type="checkbox"]),
+.inspector select {
+  border: 1px solid #cbd9d5;
+  border-radius: 4px;
+  padding: 6px;
+  max-width: 100%;
+}
+.property-values {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 6px;
+}
+.property-values button {
+  font-weight: 400;
+  padding: 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.inspector pre {
+  max-height: 160px;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.watch-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.watch-columns > div {
+  min-width: 0;
+}
+.executing-line {
+  background: #f4d57545;
+  border-left: 3px solid #c9a22b;
+}
