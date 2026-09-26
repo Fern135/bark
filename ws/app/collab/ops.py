@@ -64,19 +64,43 @@ def _roots(workspace: dict) -> list:
     return roots
 
 
-def _children(block: dict) -> Iterator[tuple[dict, str, dict]]:
-    """Yield (holder, key, child) for each real (non-shadow) child of `block`.
+def _children(block: dict) -> Iterator[tuple[dict, dict, dict]]:
+    """Yield (holder, child, slot) for each real (non-shadow) child of `block`.
 
     `holder` is the dict that owns the reference, so a caller can rewrite or delete it.
+    `slot` is {"input": name} or {"next": True} — enough to prune the slot afterwards.
     """
     inputs = block.get("inputs")
     if isinstance(inputs, dict):
-        for holder in inputs.values():
+        for name, holder in inputs.items():
             if isinstance(holder, dict) and isinstance(holder.get("block"), dict):
-                yield holder, "block", holder["block"]
+                yield holder, holder["block"], {"input": name}
     following = block.get("next")
     if isinstance(following, dict) and isinstance(following.get("block"), dict):
-        yield following, "block", following["block"]
+        yield following, following["block"], {"next": True}
+
+
+def _prune_slot(parent: dict, slot: dict) -> None:
+    """Drop a connection that holds nothing at all.
+
+    Blockly's own serializer omits empty slots, so leaving {"next": {}} behind would make an
+    applied-op document hash differently from a freshly re-serialised one — and the client
+    would read that as divergence on every single commit. The TypeScript mirror in
+    scripting/src/collab/ops.ts does the same.
+    """
+    if slot.get("next") is True:
+        following = parent.get("next")
+        if isinstance(following, dict) and not following.get("block") and not following.get("shadow"):
+            parent.pop("next", None)
+        return
+    inputs = parent.get("inputs")
+    if not isinstance(inputs, dict):
+        return
+    holder = inputs.get(slot["input"])
+    if isinstance(holder, dict) and not holder.get("block") and not holder.get("shadow"):
+        inputs.pop(slot["input"], None)
+    if not inputs:
+        parent.pop("inputs", None)
 
 
 def build_index(workspace: dict) -> dict[str, Node]:
@@ -93,7 +117,7 @@ def build_index(workspace: dict) -> dict[str, Node]:
             # An id-less block (hand-authored fixtures do this) cannot be addressed by an
             # op, but its children still might be, so keep walking under the same parent.
             parent_for_children = parent
-        for _holder, _key, child in _children(block):
+        for _holder, child, _slot in _children(block):
             stack.append((child, parent_for_children, depth + 1))
     return index
 
@@ -121,22 +145,34 @@ def conflicts(index: dict[str, Node], requested: str, held: str) -> bool:
     return held in ancestors(index, requested) or requested in ancestors(index, held)
 
 
-def find(workspace: dict, block_id: str) -> tuple[Any, Any, dict] | None:
-    """Locate a block as (container, key, block), where container[key] is the block.
+@dataclass
+class Located:
+    """Where a block was found. `parent` is None for a root, and then `position` is its index
+    in the roots list; otherwise `holder` owns the reference and `slot` names the connection."""
 
-    The container is either the roots list (key is an int index) or the `{"block": ...}`
-    holder inside an input / next (key is "block").
-    """
+    block: dict
+    parent: dict | None = None
+    slot: dict | None = None
+    holder: dict | None = None
+    roots: list | None = None
+    position: int | None = None
+
+    @property
+    def is_root(self) -> bool:
+        return self.parent is None
+
+
+def find(workspace: dict, block_id: str) -> Located | None:
     roots = _roots(workspace)
     for position, root in enumerate(roots):
         if isinstance(root, dict) and root.get("id") == block_id:
-            return roots, position, root
+            return Located(block=root, roots=roots, position=position)
     stack = [root for root in roots if isinstance(root, dict)]
     while stack:
-        block = stack.pop()
-        for holder, key, child in _children(block):
+        parent = stack.pop()
+        for holder, child, slot in _children(parent):
             if child.get("id") == block_id:
-                return holder, key, child
+                return Located(block=child, parent=parent, slot=slot, holder=holder)
             stack.append(child)
     return None
 
@@ -146,12 +182,12 @@ def _take(workspace: dict, block_id: str) -> dict:
     located = find(workspace, block_id)
     if located is None:
         raise OpError("NOT_FOUND", f"Block {block_id!r} is not in this document.")
-    container, key, block = located
-    if isinstance(key, int):
-        container.pop(key)
+    if located.is_root:
+        located.roots.pop(located.position)
     else:
-        container.pop(key, None)
-    return block
+        located.holder.pop("block", None)
+        _prune_slot(located.parent, located.slot)
+    return located.block
 
 
 def _require(op: dict, field: str) -> Any:
@@ -217,17 +253,17 @@ def apply_op(document: dict, op: dict) -> None:
         located = find(workspace, block_id)
         if located is None:
             raise OpError("NOT_FOUND", f"Block {block_id!r} is not in this document.")
-        container, key, existing = located
         block = dict(block)
         block["id"] = block_id
-        if isinstance(key, int):
+        if located.is_root:
             # Roots keep their canvas position unless the replacement carries one.
-            block.setdefault("x", existing.get("x", 0))
-            block.setdefault("y", existing.get("y", 0))
+            block.setdefault("x", located.block.get("x", 0))
+            block.setdefault("y", located.block.get("y", 0))
+            located.roots[located.position] = block
         else:
             block.pop("x", None)
             block.pop("y", None)
-        container[key] = block
+            located.holder["block"] = block
 
     elif kind == "attach":
         block_id = _require(op, "id")
@@ -240,7 +276,7 @@ def apply_op(document: dict, op: dict) -> None:
         parent_located = find(workspace, parent_id)
         if parent_located is None:
             raise OpError("NOT_FOUND", f"Parent {parent_id!r} is not in this document.")
-        parent = parent_located[2]
+        parent = parent_located.block
 
         # Resolve and check the target slot *before* detaching anything. Taking the block
         # first would lose it entirely if the slot turned out to be occupied.
@@ -280,10 +316,9 @@ def apply_op(document: dict, op: dict) -> None:
         located = find(workspace, block_id)
         if located is None:
             raise OpError("NOT_FOUND", f"Block {block_id!r} is not in this document.")
-        container, key, block = located
-        if not isinstance(key, int):
+        if not located.is_root:
             raise OpError("INVALID_OP", "move only repositions a root block; use attach/detach.")
-        _coerce_position(block, op.get("x"), op.get("y"))
+        _coerce_position(located.block, op.get("x"), op.get("y"))
 
     elif kind == "delete":
         _take(workspace, _require(op, "id"))
@@ -316,13 +351,13 @@ def _subtree_ids(workspace: dict, block_id: str) -> set[str]:
     if located is None:
         return set()
     ids: set[str] = set()
-    stack = [located[2]]
+    stack = [located.block]
     while stack:
         block = stack.pop()
         found = block.get("id")
         if isinstance(found, str):
             ids.add(found)
-        for _holder, _key, child in _children(block):
+        for _holder, child, _slot in _children(block):
             stack.append(child)
     return ids
 

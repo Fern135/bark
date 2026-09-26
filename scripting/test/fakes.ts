@@ -8,6 +8,56 @@ import type {
   WorkerMessage,
   WorkerPort,
 } from "../src/types";
+import type {
+  CollabClientMessage,
+  CollabPort,
+  CollabServerMessage,
+} from "../src/collab/types";
+
+/** A CollabPort with no socket, so the client's state machine is testable offline. */
+export class FakeCollabPort implements CollabPort {
+  sent: CollabClientMessage[] = [];
+  closed = false;
+  onopen: (() => void) | null = null;
+  onmessage: ((message: CollabServerMessage) => void) | null = null;
+  onclose: (() => void) | null = null;
+  onerror: ((error: Error) => void) | null = null;
+  send(message: CollabClientMessage) {
+    this.sent.push(message);
+  }
+  close() {
+    this.closed = true;
+  }
+  /** Pretend the socket opened. */
+  open() {
+    this.onopen?.();
+  }
+  /** Deliver a server frame. */
+  deliver(message: CollabServerMessage) {
+    this.onmessage?.(message);
+  }
+  /** Pretend the socket dropped. */
+  drop() {
+    this.onclose?.();
+  }
+  /** The last frame of a given type, which is what assertions usually want. */
+  last<T extends CollabClientMessage["type"]>(
+    type: T,
+  ): Extract<CollabClientMessage, { type: T }> | undefined {
+    for (let i = this.sent.length - 1; i >= 0; i--)
+      if (this.sent[i].type === type)
+        return this.sent[i] as Extract<CollabClientMessage, { type: T }>;
+    return undefined;
+  }
+  ofType<T extends CollabClientMessage["type"]>(
+    type: T,
+  ): Extract<CollabClientMessage, { type: T }>[] {
+    return this.sent.filter((message) => message.type === type) as Extract<
+      CollabClientMessage,
+      { type: T }
+    >[];
+  }
+}
 
 export class FakeWorker implements WorkerPort {
   messages: HostMessage[] = [];
