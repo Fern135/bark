@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-test
+dist-playground
+public/pyodide
+test-results
+playwright-report
+.validation
+*.tsbuildinfo
+Dockerfile
+.dockerignore

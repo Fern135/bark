@@ -57,7 +57,7 @@ function teardown() {
 }
 ```
 
-The host supplies canvas sizing, file selection, buttons and HUD rendering. The player owns one engine and scripting session; it does not expose Babylon resources or editable world commands. Input requires canvas focus and is cleared on blur. `createGamePlayer` also accepts the engine's optional runtime limits and initialization AbortSignal. An initialization signal only cancels initialization; use `dispose()` to release an established player.
+The host supplies canvas sizing, file selection, buttons and HUD rendering. The player owns one engine and scripting session; it does not expose Babylon resources or editable world commands. Input requires canvas focus and is cleared on blur. `createGamePlayer` also accepts the engine's optional runtime limits and initialization AbortSignal, and an optional `workerFactory` for hosts whose bundler cannot resolve the packaged worker URL (such as Next.js); they serve the built `dist/assets/worker-*.js` themselves and return `new Worker(url, { type: "module" })`. An initialization signal only cancels initialization; use `dispose()` to release an established player.
 
 ## States, cancellation and observers
 

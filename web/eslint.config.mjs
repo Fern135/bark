@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Runtime files copied from engine/scripting by scripts/copy-game-assets.mjs:
+    "public/pyodide/**",
+    "public/havok/**",
+    "public/scripting/**",
   ]),
 ]);
 
