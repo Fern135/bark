@@ -21,6 +21,10 @@ HEALTHCHECK --interval=15s --timeout=5s --retries=5 \
   CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=4)"
 
 # Trusting forwarded headers from any IP is safe here: only the gateway can reach this container.
+# --ws-max-size is 1 MiB because one `replace` op can carry a whole block stack; abuse is
+# bounded by the per-op caps and per-connection rate limits in app/config.py instead.
+# --ws-ping-interval keeps idle collaborators' sockets alive through the gateway.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001", \
      "--proxy-headers", "--forwarded-allow-ips", "*", \
-     "--no-server-header", "--ws-max-size", "65536"]
+     "--no-server-header", "--ws-max-size", "1048576", \
+     "--ws-ping-interval", "20", "--ws-ping-timeout", "20"]

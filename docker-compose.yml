@@ -65,6 +65,26 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+  # Collaboration fan-out only: pub/sub per document plus ephemeral presence. Nothing here
+  # is durable, so it needs no volume — documents and locks live in Postgres.
+  redis:
+    <<: *hardening
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    read_only: true
+    tmpfs:
+      - /data
+    cap_drop: [ALL]
     networks:
       - internal
 
