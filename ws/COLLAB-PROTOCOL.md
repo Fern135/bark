@@ -38,7 +38,7 @@ document-level lock (block id `"*"`), which is rarely contended.
 { "type": "join", "doc": "<uuid>", "have": 41 }          // open: "have" enables op replay instead of a snapshot
 { "type": "lock",   "blockId": "b7", "nonce": 3 }
 { "type": "unlock", "blockId": "b7" }
-{ "type": "commit", "base": 41, "ops": [ ... ], "hash": "<sha256 of resulting workspace>", "nonce": 4 }
+{ "type": "commit", "base": 41, "ops": [ ... ], "nonce": 4 }   // "hash" optional, see below
 { "type": "presence", "blockId": "b7" }                  // ephemeral, never persisted; blockId optional
 { "type": "heartbeat" }                                  // renews this connection's locks
 ```
@@ -171,6 +171,12 @@ Server-side rejection is the backstop, not the mechanism.
   separators, `ensure_ascii=False`. Clients compare after applying; a mismatch means
   divergence, and the only correct response is to re-join for a fresh snapshot. This is the
   cheap divergence detector — keep it.
+
+A `commit` may carry a `hash` too, and the reference client **does not** send one: computing
+it means awaiting `crypto.subtle` on the path of every keystroke, and the server hashes each
+`patch` anyway. Drift is therefore detected in the server→client direction, where being
+asynchronous costs nothing. A client that does send one gets a server-side warning log on
+mismatch, which is useful while the two diff implementations are still settling.
 
 Two normalisation rules exist purely so that hash can be trusted. Both sides implement them,
 and breaking either makes every commit look like divergence:
