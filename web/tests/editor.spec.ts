@@ -113,7 +113,8 @@ test("edit, gallery, GLB upload, export/import and invalid import preserve autho
     ),
   ).toBe(false);
   await page.getByRole("button", { name: "Sunny", exact: true }).click();
-  await page.getByRole("button", { name: "Change model" }).click();
+  await page.getByRole("button", { name: "Appearance", exact: true }).click();
+  await page.getByRole("button", { name: "Gallery & upload", exact: true }).click();
   await page
     .getByRole("button", { name: "Wooden crate Object", exact: true })
     .click();

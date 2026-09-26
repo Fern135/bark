@@ -61,7 +61,7 @@ Visual captures: `editor-code-preview.png` and `editor-mobile-code-preview.png`.
 
 ## Editor reference polish
 
-The editor stylesheet has been consolidated into one set of component rules and responsive breakpoints. Design uses a 420px inspector, an isolated model studio, and a 404px Scene panel. The right sidebar uses four-column thumbnails and compact Transform rows. Transform tools occupy the reference's centered toolbar position; Focus object and Reset view live in Transform settings. All three views use the same peeking Byte illustration.
+The editor stylesheet has been consolidated into one set of component rules and responsive breakpoints. Design uses a 420px inspector, an isolated model studio, and a 404px Scene panel. The right sidebar uses four-column thumbnails; Viewport properties live in their own left column. Transform tools occupy the reference's centered toolbar position; Focus object and Reset view live in Transform settings. All three views use the same peeking Byte illustration.
 
 The shell is bounded to `100dvh`, with the workspace consuming the remaining height after the header, tabs, and status bar. Short windows use compact controls instead of a minimum canvas height. Scene cards use complete rows measured with ResizeObserver; page controls expose additional objects without scrolling or clipping the sidebar, and selected objects remain visible after changing views or resizing. Add object stays pinned below the grid. Script output overlays the workspace in a bounded console instead of extending the page. Blockly starts at a scale appropriate to the available height.
 
@@ -82,3 +82,12 @@ Transform settings contain World/Local orientation, snapping (0.5 units movement
 `GameRuntime.editorTools` is opt-in and exposes configure/get/cancel. The engine owns Babylon utility-layer handles and emits editorSelection/editorTransform events. A validated presentation transaction updates the visible node without rebuilding Havok bodies or modifying authored exports; commit restores the starting node and applies the completed transform through the existing world API once. Editor meshes never become project entities. Rendering runtimes that do not opt in retain their camera behavior.
 
 The inspector follows previews without exporting the project or rebuilding Blockly choices on every pointer movement. Transform undo/redo (Ctrl/Cmd+Z, Ctrl/Cmd+Shift+Z or Ctrl+Y) records one completed handle drag or numeric edit, with a 100-entry limit. History survives Play/Stop and clears when projects are loaded or non-transform scene edits are made. All state is local to the frontend; project JSON remains version 1.
+
+
+## Viewport properties panel
+
+Viewport uses a left Properties column, the live canvas, and a full-height Scene column. The former bottom-right Transform card is removed. Properties shows the selected thumbnail, name, type, and one open section: Transform (default), Appearance, or Collision. Shared Inspector fields retain existing project mutations and transform history; Appearance adds visibility without clearing selection. Numeric scale edits honor the 0.01 minimum and proportional constraints; character X/Z rotation and child collision editing are disabled with explanations. No selection shows World settings. Playback locks property edits.
+
+At widths of 1180px and above both side panels remain visible. From 951-1179px Properties stays on the left and Scene uses its drawer; at 950px and below both use named drawer buttons. Accordion content, density adjustments, and a pinned Delete action keep the panels within the viewport without scrolling. Motion animates section changes and selected-object identity, respecting reduced motion. Code and Design retain their layouts.
+
+Validation covers property edits, visibility and collision persistence, transform undo, scale restrictions, model-gallery access, deletion, playback locking, desktop bounds, tablet selection, mobile drawers, and canvas-relative handle dragging.

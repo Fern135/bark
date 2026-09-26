@@ -35,7 +35,7 @@ export function PropertiesPanel({ editor, entity, thumbnail, kind, sections, wor
           </motion.div>}</AnimatePresence>
         </div>)}
       </div>
-      <div className={s.bottom}><span>Changes stay in your world</span><button disabled={editor.lock} onClick={editor.remove}><Icon name="trash" size={15} />Delete object</button></div>
+      <div className={s.bottom}><button disabled={editor.lock} onClick={editor.remove}><Icon name="trash" size={15} />Delete object</button></div>
     </> : <div className={s.world}><h3>World settings</h3>{world}<p>Select an object in the scene to make it yours.</p></div>}
   </section>;
 }

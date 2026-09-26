@@ -217,6 +217,7 @@ export function Inspector({
                     )}
                     onBlur={(event) => {
                       if (event.target.value !== "" && Number.isFinite(event.target.valueAsNumber)) {
+                        if (field === "scale") event.target.value = String(Math.max(0.01, event.target.valueAsNumber));
                         transform(field, axis, event.target.valueAsNumber);
                       } else {
                         event.target.value = String(field === "rotation" ? rotation[axis] : e.transform[field][axis]);

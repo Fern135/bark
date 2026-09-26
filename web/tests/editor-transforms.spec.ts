@@ -71,7 +71,7 @@ test("viewport selection, numeric history, keyboard scope, camera and narrow lay
   await expect(page.getByRole("button", { name: "Select tool", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("button", { name: "Undo transform", exact: true }).click();
   await expect(value(page, "position x")).toHaveValue(before);
-  const sky = await point(page, 240, -140); await page.mouse.click(sky.x, sky.y);
+  const sky = await point(page, 0, -155); await page.mouse.click(sky.x, sky.y);
   await expect(page.getByRole("heading", { name: "World settings", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Byte", exact: true }).click();
   await page.keyboard.press("Digit3"); await expect(page.getByRole("button", { name: "Resize tool", exact: true })).toHaveAttribute("aria-pressed", "true");
