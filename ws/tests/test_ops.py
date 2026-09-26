@@ -131,7 +131,7 @@ def test_conflicts_survives_a_cycle():
 
 def test_move_repositions_a_root(doc, workspace):
     ops.apply_op(doc, {"op": "move", "id": "loose", "x": 11, "y": 22})
-    assert ops.find(workspace, "loose")[2]["x"] == 11
+    assert ops.find(workspace, "loose").block["x"] == 11
 
 
 def test_move_rejects_a_connected_block(doc):
@@ -143,12 +143,15 @@ def test_move_rejects_a_connected_block(doc):
 def test_detach_then_attach(doc, workspace):
     ops.apply_op(doc, {"op": "detach", "id": "j1", "x": 300, "y": 300})
     assert ops.build_index(workspace)["j1"].parent is None
-    assert ops.find(workspace, "n1")[2].get("next", {}).get("block") is None
+    # Blockly omits a slot holding nothing, so a detach removes it rather than leaving {}.
+    # Leaving it would make this document hash differently from a re-serialised one, and the
+    # client would read that as divergence on every commit.
+    assert "next" not in ops.find(workspace, "n1").block
 
     ops.apply_op(doc, {"op": "attach", "id": "j1", "parent": "start", "connection": {"next": True}})
     assert ops.build_index(workspace)["j1"].parent == "start"
     # A connected block has no canvas position; only roots do.
-    assert "x" not in ops.find(workspace, "j1")[2]
+    assert "x" not in ops.find(workspace, "j1").block
 
 
 def test_attach_refuses_a_cycle(doc):
@@ -173,6 +176,14 @@ def test_attach_in_place_is_a_noop(doc, workspace):
     assert json.dumps(workspace, sort_keys=True) == before
 
 
+def test_detach_prunes_an_emptied_inputs_map_but_keeps_shadows(doc, workspace):
+    ops.apply_op(doc, {"op": "detach", "id": "n1", "x": 1, "y": 1})
+    assert "inputs" not in ops.find(workspace, "start").block
+    # A slot that still holds a shadow is content, so it stays.
+    ops.apply_op(doc, {"op": "detach", "id": "j1", "x": 2, "y": 2})
+    assert ops.find(workspace, "n1").block["inputs"]["TEXT"]["shadow"]["type"] == "text"
+
+
 def test_attach_needs_a_connection(doc):
     with pytest.raises(ops.OpError) as caught:
         ops.apply_op(doc, {"op": "attach", "id": "loose", "parent": "start", "connection": {}})
@@ -182,12 +193,12 @@ def test_attach_needs_a_connection(doc):
 # ---- replace -------------------------------------------------------------------------
 
 def test_replace_keeps_identity_and_root_position(doc, workspace):
-    before_x = ops.find(workspace, "start")[2]["x"]
+    before_x = ops.find(workspace, "start").block["x"]
     ops.apply_op(
         doc,
         {"op": "replace", "id": "start", "block": {"type": "bark_start", "extraState": {"hasElse": True}}},
     )
-    block = ops.find(workspace, "start")[2]
+    block = ops.find(workspace, "start").block
     assert block["id"] == "start"
     assert block["x"] == before_x
     assert block["extraState"] == {"hasElse": True}
@@ -202,7 +213,7 @@ def test_replace_overwrites_the_whole_subtree(doc, workspace):
 
 def test_replace_strips_position_from_a_connected_block(doc, workspace):
     ops.apply_op(doc, {"op": "replace", "id": "n1", "block": {"type": "bark_notify", "x": 9, "y": 9}})
-    block = ops.find(workspace, "n1")[2]
+    block = ops.find(workspace, "n1").block
     assert "x" not in block and block["id"] == "n1"
 
 
@@ -211,7 +222,7 @@ def test_replace_strips_position_from_a_connected_block(doc, workspace):
 def test_create_adds_a_root(doc, workspace):
     ops.apply_op(doc, {"op": "create", "block": {"type": "bark_hud", "id": "h1"}, "x": 7, "y": 8})
     assert ops.build_index(workspace)["h1"].parent is None
-    assert ops.find(workspace, "h1")[2]["y"] == 8
+    assert ops.find(workspace, "h1").block["y"] == 8
 
 
 def test_create_rejects_a_duplicate_id(doc):
@@ -313,4 +324,4 @@ def test_apply_ops_is_all_or_nothing_for_the_caller(doc):
             {"op": "move", "id": "loose", "x": 1, "y": 1},
             {"op": "delete", "id": "ghost"},
         ])
-    assert ops.find(ops.workspace_of(doc), "loose")[2]["x"] == 500
+    assert ops.find(ops.workspace_of(doc), "loose").block["x"] == 500
