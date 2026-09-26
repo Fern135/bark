@@ -116,6 +116,43 @@ as its first message.
 
 ## web/ (Next.js)
 
+### Run the frontend locally
+
+Use Node.js 22 to match the Docker image. From the repository root:
+
+```bash
+cd web
+npm ci
+npm run dev
+```
+
+Open http://localhost:3000. The homepage runs without backend services or a local
+`.env` file. Edit `web/src/app/page.tsx` to update it; the dev server reloads changes.
+
+Open http://localhost:3000/components for the interactive Bark UI showcase.
+Reusable controls and their usage notes live in `web/src/components/ui/`.
+
+The homepage at `/` is Bark's animated marketing landing page, including a local
+creation demo. Design references, the generated concept, and asset notes are in
+`web/design/`. The demo keeps customization in page state and does not save or
+publish projects.
+
+For API and WebSocket integration, use the Docker dev stack above and open
+http://localhost:8080. The local Next.js server alone does not proxy `/api` or `/ws/`.
+
+Run the frontend checks from `web/`:
+
+```bash
+npm run lint
+npm run build
+```
+
+The build checks TypeScript and generates `.next/standalone/server.js` for the
+production Docker image. The Dockerfile also copies the static assets needed by
+that server.
+
+### Integration helpers
+
 - `src/lib/api.ts` is the shared axios instance. In the browser it calls `/api` (same origin).
   During SSR it calls `http://server:8000/api` over the internal network. It already sends
   Django's `csrftoken` cookie as the `X-CSRFToken` header.

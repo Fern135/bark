@@ -1,8 +1,12 @@
+import type { Metadata } from "next";
+import { Nunito } from "next/font/google";
+import { Landing } from "@/components/landing/landing";
+
+const nunito = Nunito({ subsets: ["latin"], display: "swap" });
+export const metadata: Metadata = {
+  title: "Bark — Big ideas. Little blocks. Your world.",
+  description: "A little imagination goes a long way. Explore Bark, meet Byte, and try a playful game creation demo right in your browser.",
+};
 export default function Home() {
-  return (
-    <main className="container py-5">
-      <h1 className="display-5">Bark</h1>
-      <p className="lead">Next.js + TypeScript + Bootstrap 5 + axios.</p>
-    </main>
-  );
+  return <div className={nunito.className}><Landing /></div>;
 }

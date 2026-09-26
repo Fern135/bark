@@ -9,8 +9,11 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@radix-ui/react-dialog": "^1.1.23",
+    "@radix-ui/react-popover": "^1.1.23",
     "axios": "^1.20.0",
     "bootstrap": "^5.3.8",
+    "motion": "^13.4.4",
     "next": "16.3.6",
     "react": "19.2.8",
     "react-dom": "19.2.8"
