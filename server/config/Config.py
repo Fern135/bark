@@ -51,8 +51,42 @@ class Config:
     JWT_ISSUER = os.environ.get('JWT_ISSUER', 'bark-server')
     JWT_AUDIENCE = os.environ.get('JWT_AUDIENCE', 'bark-web')
     JWT_ACCESS_COOKIE = os.environ.get('JWT_ACCESS_COOKIE', 'access_token')
-    JWT_ACCESS_TTL_MINUTES = int(os.environ.get('JWT_ACCESS_TTL_MINUTES', '15'))
+    # How long a login lasts (JWT + cookie). Default: 1 week.
+    JWT_ACCESS_TTL_MINUTES = int(os.environ.get('JWT_ACCESS_TTL_MINUTES', str(7 * 24 * 60)))
     JWT_REFRESH_TTL_DAYS = int(os.environ.get('JWT_REFRESH_TTL_DAYS', '7'))
+    # Secure cookies are only sent over HTTPS (browsers also allow them on http://localhost).
+    JWT_COOKIE_SECURE = _bool('JWT_COOKIE_SECURE', '1')
+
+    # ---- Login brute-force protection ----
+    # After LOGIN_MAX_FAILURES wrong passwords for one account, that account is locked for
+    # LOGIN_LOCKOUT_MINUTES (counted from the first failure).
+    LOGIN_MAX_FAILURES = int(os.environ.get('LOGIN_MAX_FAILURES', '5'))
+    LOGIN_LOCKOUT_MINUTES = int(os.environ.get('LOGIN_LOCKOUT_MINUTES', '15'))
+
+    # ---- Cache ----
+    # docker compose points this at the redis service so all gunicorn workers share login
+    # counters. Empty (e.g. running outside Docker) means a per-process in-memory cache.
+    CACHE_URL = os.environ.get('DJANGO_CACHE_URL', '')
+
+    # ---- Password / username recovery ----
+    # Base URL of the Next.js site, used to build the reset link in emails.
+    FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8080').rstrip('/')
+    PASSWORD_RESET_MINUTES = int(os.environ.get('PASSWORD_RESET_MINUTES', '60'))
+
+    # ---- Email ----
+    # Demo mode: emails are saved to the database and shown by GET /api/auth/demo-inbox/
+    # instead of being sent. Anyone who knows an address can read its inbox, so turn this
+    # off (0) for anything real.
+    DEMO_EMAIL = _bool('DEMO_EMAIL', '1')
+    # Console backend prints emails to the server logs. For real email, set the SMTP backend
+    # and EMAIL_HOST etc. (the server container also needs a network with internet access).
+    EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+    EMAIL_HOST = os.environ.get('EMAIL_HOST', 'localhost')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+    EMAIL_USE_TLS = _bool('EMAIL_USE_TLS', '1')
+    DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'Bark <no-reply@localhost>')
 
 
 config = Config()

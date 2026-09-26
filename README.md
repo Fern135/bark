@@ -1,5 +1,7 @@
 # bark
 
+**API reference:** [API.md](API.md) lists every endpoint, its body, and whether it needs a JWT.
+
 | Directory | What it is | Port (internal only) |
 | --- | --- | --- |
 | `web/` | Next.js (TypeScript, Bootstrap 5, axios) | 3000 |
@@ -88,6 +90,8 @@ docker compose exec server python manage.py makemigrations
 docker compose exec server python manage.py migrate
 docker compose exec server python manage.py createsuperuser
 docker compose exec server python manage.py shell
+docker compose exec server python manage.py test --parallel auto   # Django tests (redis DB 15, never the app's cache)
+docker compose logs server | grep '\[tests\]'   # results of the tests that run on every server start
 docker compose exec db psql -U bark -d bark    # Postgres shell
 ```
 

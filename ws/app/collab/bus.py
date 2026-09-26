@@ -69,6 +69,9 @@ class RedisBus:
         self._pubsub: Any = None
         self._handlers: dict[str, Handler] = {}
         self._reader: asyncio.Task | None = None
+        # redis-py has no pub/sub connection until the first subscribe(); reading before
+        # then raises "pubsub connection not set". The reader waits on this instead.
+        self._subscribed = asyncio.Event()
 
     async def start(self) -> None:
         import redis.asyncio as redis  # imported here so LocalBus needs no redis install
@@ -96,6 +99,9 @@ class RedisBus:
 
     async def _read(self) -> None:
         while True:
+            if self._pubsub.connection is None:
+                await self._subscribed.wait()
+                continue
             try:
                 message = await self._pubsub.get_message(timeout=1.0)
             except asyncio.CancelledError:
@@ -121,6 +127,7 @@ class RedisBus:
     async def subscribe(self, channel: str, handler: Handler) -> None:
         self._handlers[channel] = handler
         await self._pubsub.subscribe(channel)
+        self._subscribed.set()
 
     async def unsubscribe(self, channel: str) -> None:
         self._handlers.pop(channel, None)

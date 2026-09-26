@@ -62,9 +62,13 @@ services:
     environment:
       POSTGRES_HOST: db
       POSTGRES_PORT: "5432"
+      # Django cache (login attempt counters). DB 1 keeps it apart from ws's pub/sub on DB 0.
+      DJANGO_CACHE_URL: redis://redis:6379/1
     cap_drop: [ALL]
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - internal
@@ -95,6 +99,9 @@ services:
     <<: *hardening
     image: redis:7-alpine
     command: ["redis-server", "--save", "", "--appendonly", "no"]
+    # Start as the image's redis user: as root, the entrypoint tries to chown /data and
+    # switch users, which cap_drop: [ALL] forbids, so redis would exit on boot.
+    user: redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

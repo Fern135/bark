@@ -3,7 +3,16 @@ FROM python:3.13-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # entrypoint.sh runs the Django tests in the background, in parallel, every time the
+    # container starts. auto = one worker per CPU the container may use (see entrypoint.sh).
+    RUN_TESTS_ON_START=1 \
+    TEST_PARALLEL=auto
+
+# tini as PID 1 reaps the background test process when it finishes.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tini \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -18,5 +27,5 @@ RUN chmod +x /app/entrypoint.sh
 USER app
 EXPOSE 8000
 
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["tini", "--", "/app/entrypoint.sh"]
 CMD ["gunicorn"]

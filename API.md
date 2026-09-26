@@ -1,0 +1,248 @@
+# Bark API
+
+Every request goes through the gateway at **http://localhost:8080** (`APP_PORT` in `.env`).
+The browser never talks to Django or the websocket service directly.
+
+| Prefix | Served by |
+| --- | --- |
+| `/api/` | Django (`server/`) |
+| `/ws/` | Websocket service (`ws/`) |
+| `/admin/` | Django admin (uses Django's own login, not the JWT) |
+
+## How auth works
+
+- **Login sets a JWT in an HttpOnly cookie** called `access_token`. JavaScript can't read it, and
+  the browser sends it automatically with every request to `/api/` and `/ws/`. It lasts
+  **1 week** (`JWT_ACCESS_TTL_MINUTES`). After that the user logs in again.
+- **Every POST needs a CSRF token.** Call `GET /api/auth/csrf/` once when the app loads. It
+  sets the `csrftoken` cookie, and the shared axios instance (`web/src/lib/api.ts`) sends it back
+  as the `X-CSRFToken` header. Without it, Django answers **403**.
+- **All bodies are JSON** (`Content-Type: application/json`). So are all responses.
+  Errors look like `{"error": "message"}`, sometimes with `"details": [...]`.
+
+```ts
+import { api } from "@/lib/api";
+
+await api.get("/auth/csrf/");                              // once, on app load
+await api.post("/auth/login/", { username, password });    // browser now holds the JWT cookie
+```
+
+---
+
+## Endpoints
+
+| Method | URL | JWT required | CSRF required | Purpose |
+| --- | --- | --- | --- | --- |
+| GET | `/api/auth/csrf/` | No | No | Get the CSRF cookie |
+| POST | `/api/auth/register/` | No | Yes | Create an account |
+| POST | `/api/auth/login/` | No | Yes | Log in, sets the JWT cookie |
+| GET | `/api/auth/me/` | **Yes** | No | The logged-in user |
+| POST | `/api/auth/logout/` | No | Yes | Clear the JWT cookie |
+| POST | `/api/auth/forgot-password/` | No | Yes | Email a password reset link |
+| POST | `/api/auth/reset-password/` | No | Yes | Set a new password using the emailed token |
+| POST | `/api/auth/forgot-username/` | No | Yes | Email the username |
+| GET | `/api/auth/demo-inbox/?email=` | No | No | **Demo only.** Read the emails the app "sent" |
+| WS | `/ws/` | **Yes** | No | Real-time collaboration |
+
+Apart from `/me/`, the `/api/auth/` endpoints don't need a JWT, because they're how you get
+one. See [Protecting endpoints](#protecting-endpoints) for adding your own.
+
+### Rate limits
+
+| Limit | Where | Applies to | Response |
+| --- | --- | --- | --- |
+| 10 requests/minute per IP (burst of 10) | Gateway (`proxy/nginx.conf`) | POST login, register, forgot-password, reset-password, forgot-username | 429 |
+| 5 failed logins per account in 15 minutes | Django (`@rate_limit`) | POST login | 429 + `Retry-After` |
+| 20 requests/second per IP | Gateway | Everything else under `/api/` | 429 |
+
+A locked account refuses even the correct password until the 15 minutes pass. Resetting the
+password unlocks it immediately.
+
+### GET `/api/auth/csrf/`
+
+Sets the `csrftoken` cookie. No body.
+
+**200** `{"message": "CSRF cookie set"}`
+
+### POST `/api/auth/register/`
+
+```json
+{ "username": "alice", "email": "alice@example.com", "password": "Correct-Horse-9" }
+```
+
+The password must pass Django's password validators: at least 8 characters, not too common,
+not all numbers, and not too similar to the username or email.
+
+| Status | Body |
+| --- | --- |
+| 201 | `{"message": "User created successfully"}` |
+| 400 | `{"error": "Missing required fields"}` |
+| 400 | `{"error": "Invalid email format"}` |
+| 400 | `{"error": "Email already registered"}` |
+| 400 | `{"error": "User already exists"}` |
+| 400 | `{"error": "Password is too weak", "details": ["This password is too common."]}` |
+
+Registering doesn't log the user in. Call login afterwards.
+
+### POST `/api/auth/login/`
+
+```json
+{ "username": "alice", "password": "Correct-Horse-9" }
+```
+
+`username` can also be the account's email.
+
+| Status | Body |
+| --- | --- |
+| 200 | `{"message": "Logged in", "user": {"user_id": "…uuid…", "username": "alice", "email": "alice@example.com"}}` |
+| 400 | `{"error": "Missing required fields"}` or `{"error": "Invalid JSON body"}` |
+| 401 | `{"error": "Invalid username or password"}` (same for unknown user and wrong password) |
+| 429 | `{"error": "Too many failed login attempts. Try again in 15 minutes or reset your password."}` |
+
+On 200 the response also sets the cookie:
+`access_token=<jwt>; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=604800`.
+`user_id` is the user's public id. It's also the JWT's `sub` claim and the id ws uses.
+
+### GET `/api/auth/me/`
+
+**Requires the JWT cookie.** No body. Call it on page load to check whether someone is logged in.
+
+| Status | Body |
+| --- | --- |
+| 200 | `{"user": {"user_id": "…uuid…", "username": "alice", "email": "alice@example.com"}}` |
+| 401 | `{"error": "Authentication required"}` (not logged in, expired, or invalid token) |
+
+### POST `/api/auth/logout/`
+
+No body. **200** `{"message": "Logged out"}` and the cookie is deleted.
+
+### POST `/api/auth/forgot-password/`
+
+```json
+{ "email": "alice@example.com" }
+```
+
+Emails a link to `{FRONTEND_URL}/reset-password?token=…`. The token expires after 60 minutes
+(`PASSWORD_RESET_MINUTES`) and stops working once the password is changed. The frontend page at
+that URL reads `token` from the query string and posts it to `/api/auth/reset-password/`.
+
+| Status | Body |
+| --- | --- |
+| 200 | `{"message": "If an account exists for that email, we've sent instructions to it."}` |
+| 400 | `{"error": "A valid email is required"}` |
+
+The 200 is identical whether or not the account exists, so this can't be used to find out who
+has an account.
+
+### POST `/api/auth/reset-password/`
+
+```json
+{ "token": "<token from the email link>", "password": "Brand-New-Pass-7" }
+```
+
+| Status | Body |
+| --- | --- |
+| 200 | `{"message": "Password updated"}`. The user then logs in with the new password. |
+| 400 | `{"error": "This reset link is invalid or has expired"}` (bad, expired or already used token) |
+| 400 | `{"error": "Password is too weak", "details": [...]}` |
+| 400 | `{"error": "Missing required fields"}` |
+
+### POST `/api/auth/forgot-username/`
+
+```json
+{ "email": "alice@example.com" }
+```
+
+Emails the username registered to that address. Same responses as forgot-password.
+
+### GET `/api/auth/demo-inbox/?email=alice@example.com`
+
+**Demo only.** Emails aren't really sent while `DEMO_EMAIL=1` (the default). They're saved, and
+this endpoint returns the latest 20 for an address, newest first. Use it to show a "demo inbox"
+in the UI so the reset flow can be shown live.
+
+| Status | Body |
+| --- | --- |
+| 200 | `{"email": "alice@example.com", "messages": [{"subject": "Reset your Bark password", "body": "…link…", "from": "Bark <no-reply@localhost>", "sent_at": "2026-09-26T13:40:00+00:00"}]}` |
+| 400 | `{"error": "A valid email is required"}` |
+| 404 | Demo inbox disabled (`DEMO_EMAIL=0`) |
+
+> Anyone who knows an email address can read its demo inbox, including its reset links.
+> Keep `DEMO_EMAIL=1` for demos only.
+
+The same emails are listed in the Django admin under **Demo emails**.
+
+---
+
+## Protecting endpoints
+
+Two decorators live in `server/lib/decorators/`. They work on both sync and async views:
+
+```python
+from lib.decorators import jwt_required, rate_limit
+from lib.decorators.rate_limit import client_ip
+
+@require_GET
+@jwt_required                    # 401 unless the request has a valid JWT
+async def my_projects(request):
+    request.user_id              # the JWT's sub (User.user_id)
+    request.jwt_claims           # all claims
+
+@jwt_required(load_user=True)    # also loads the User row -> request.jwt_user
+async def me(request): ...
+
+@require_POST
+@rate_limit("forgot-password", key=client_ip, limit=5, window=60 * 60)   # 5 per IP per hour
+async def forgot_password(request): ...
+```
+
+- **`jwt_required`** accepts the `access_token` cookie, or `Authorization: Bearer <jwt>` for
+  non-browser clients.
+- **`rate_limit`** options:
+  - `key=`: who to count: `client_ip`, or `body_field("username", "email")`.
+  - `count_statuses=`: count only some responses, e.g. `{401}` to count failed logins only.
+  - `reset_statuses=`: responses that clear the counter, e.g. `{200}`.
+  - Counters are stored in redis, so every server worker shares them.
+
+Put `@require_GET` / `@require_POST` outermost, then `@jwt_required` / `@rate_limit`.
+
+---
+
+## Websocket: `/ws/`
+
+| | |
+| --- | --- |
+| URL | `ws://localhost:8080/ws/` (`wss://` over HTTPS) |
+| JWT required | **Yes.** The `access_token` cookie is sent automatically after login. |
+| Allowed origins | Only `WS_ALLOWED_ORIGINS` (the frontend). Other origins get HTTP 403. |
+
+```ts
+import { openSocket } from "@/lib/socket";
+const socket = openSocket();   // uses the login cookie
+```
+
+Without the cookie, the first message must be `{"type": "auth", "token": "<jwt>"}` within
+5 seconds. A missing, invalid or expired JWT closes the socket with code **1008**. On success the
+server sends `{"type": "ready", "user": "<user_id>"}`.
+
+After that, the socket speaks the collaboration protocol (`join`, `lock`, `unlock`, `commit`,
+`presence`, `heartbeat`). The full message reference is in
+[ws/COLLAB-PROTOCOL.md](ws/COLLAB-PROTOCOL.md).
+
+---
+
+## Settings that change API behaviour
+
+All in `.env` (see `.env.example`):
+
+| Setting | Default | Effect |
+| --- | --- | --- |
+| `JWT_ACCESS_TTL_MINUTES` | `10080` (1 week) | How long a login lasts |
+| `JWT_COOKIE_SECURE` | `1` | Cookie only sent over HTTPS or `http://localhost` |
+| `JWT_ACCESS_COOKIE` | `access_token` | Cookie name (server and ws both read it) |
+| `DEMO_EMAIL` | `1` | Save emails to the demo inbox instead of sending them |
+| `FRONTEND_URL` | `http://localhost:8080` | Base of links in emails |
+| `PASSWORD_RESET_MINUTES` | `60` | Reset link lifetime |
+| `WS_ALLOWED_ORIGINS` | `http://localhost:8080` | Origins allowed to open `/ws/` |
+| `LOGIN_MAX_FAILURES` | `5` | Failed logins before an account is locked |
+| `LOGIN_LOCKOUT_MINUTES` | `15` | How long the lock lasts |

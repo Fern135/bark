@@ -11,3 +11,18 @@ class User(models.Model):
 
     def __str__(self):
         return self.username
+
+class DemoEmail(models.Model):
+    """An email "sent" while DEMO_EMAIL=1. Nothing leaves the server; the demo inbox
+    endpoint (GET /api/auth/demo-inbox/) shows these instead."""
+    to = models.EmailField(db_index=True)
+    from_email = models.CharField(max_length=254)
+    subject = models.CharField(max_length=255)
+    body = models.TextField()
+    sent_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-sent_at"]
+
+    def __str__(self):
+        return f"{self.to}: {self.subject}"
