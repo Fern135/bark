@@ -134,6 +134,47 @@ as its first message.
 
 ## web/ (Next.js)
 
+### Preview the marketing frontend locally
+
+Use Node.js 22 to match the Docker image. From the repository root:
+
+```bash
+cd web
+npm ci
+npx next dev
+```
+
+Open http://localhost:3000. The homepage runs without backend services or a local
+`.env` file. Edit `web/src/app/page.tsx` to update it; the dev server reloads changes.
+
+This direct Next.js command previews the marketing page and component showcase
+without preparing engine assets. Use the Docker stack for the integrated runtime;
+`npm run dev` and `npm run build` run the engine asset preparation hooks described below.
+
+Open http://localhost:3000/components for the interactive Bark UI showcase.
+Reusable controls and their usage notes live in `web/src/components/ui/`.
+
+The homepage at `/` is Bark's animated marketing landing page, including a local
+creation demo. Design references, the generated concept, and asset notes are in
+`web/design/`. The demo keeps customization in page state and does not save or
+publish projects.
+
+For API and WebSocket integration, use the Docker dev stack above and open
+http://localhost:8080. The local Next.js server alone does not proxy `/api` or `/ws/`.
+
+Run the frontend checks from `web/`:
+
+```bash
+npm run lint
+npx next build
+```
+
+The build checks TypeScript and generates `.next/standalone/server.js` for the
+production Docker image. The Dockerfile also copies the static assets needed by
+that server.
+
+### Integration helpers
+
 - `src/lib/api.ts` is the shared axios instance. In the browser it calls `/api` (same origin).
   During SSR it calls `http://server:8000/api` over the internal network. It already sends
   Django's `csrftoken` cookie as the `X-CSRFToken` header.
@@ -154,10 +195,11 @@ into web. They connect to web **only through Docker**:
 
 They have `scale: 0` in `docker-compose.yml`: compose builds them but never creates a container,
 and they join no network, so `server`, `ws`, `db` and `proxy` cannot reach them. `web/package.json`
-does not reference them, so `web` only runs through docker compose. Outside Docker, `npm run dev`
-in `web/` stops with an explanation.
+does not reference them, so the integrated game runtime runs through docker compose.
+Outside Docker, `npm run dev` in `web/` stops with an explanation; the direct Next.js
+commands above can still preview the standalone marketing UI.
 
-Before `next dev` / `next build`, `web/scripts/copy-game-assets.mjs` copies the runtime files into
+The `npm run dev` / `npm run build` hooks run `web/scripts/copy-game-assets.mjs` to copy runtime files into
 `web/public/` (gitignored). The web container has no internet, so everything is served locally:
 
 | URL | What |

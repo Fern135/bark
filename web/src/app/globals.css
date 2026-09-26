@@ -1,1 +1,37 @@
-/* App-wide styles. Bootstrap 5 is imported in layout.tsx. */
+/* Bark foundations. Bootstrap is imported first in layout.tsx. */
+:root {
+  --bark-ink: #101052;
+  --bark-muted: #60698b;
+  --bark-blue: #087cf0;
+  --bark-blue-dark: #005cc4;
+  --bark-green: #a4ef86;
+  --bark-purple: #783cf0;
+  --bark-canvas: #f1f9fa;
+  --bark-surface: #ffffff;
+  --bark-border: #dce5f2;
+  --bark-danger: #b42336;
+  --bark-focus: #005cc4;
+  --bark-radius-sm: 10px;
+  --bark-radius-md: 15px;
+  --bark-radius-lg: 24px;
+  --bark-shadow: 0 5px 20px rgb(31 66 110 / 5%);
+  --bark-shadow-control: 0 3px 5px rgb(24 56 109 / 7%);
+  --bark-space-1: 4px;
+  --bark-space-2: 8px;
+  --bark-space-3: 12px;
+  --bark-space-4: 16px;
+  --bark-space-5: 24px;
+  --bark-space-6: 32px;
+  --bark-font: ui-rounded, "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  color: var(--bark-ink);
+  background: var(--bark-canvas);
+  font-family: var(--bark-font);
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select { font: inherit; }
+* { box-sizing: border-box; }
