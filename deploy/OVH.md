@@ -1,5 +1,9 @@
 # Bark on OVH VPS-1
 
+**Inactive option:** the owner switched back to Oracle after its account upgrade
+completed. No OVH order was submitted. Use README.md for the active deployment;
+the lower memory limits described below apply only to the earlier OVH configuration.
+
 The owner selected the monthly VPS-1 plan: 2 vCPU, 4 GB RAM, 40 GB SSD NVMe,
 Ubuntu 24.04, Virginia (`US-EAST-VA`). The official US catalog returned $5.35/month
 before tax with no commitment and $0 installation on September 26, 2026.

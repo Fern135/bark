@@ -1,8 +1,8 @@
 # Bark on Oracle Always Free
 
-**Deployment target changed:** the owner selected OVH VPS-1, billed monthly at
-$5.35 before tax. See [the OVH migration status](OVH.md). The Oracle instructions
-below are retained as a reference; they are not an instruction to launch another VM.
+**Active deployment target: Oracle.** The owner reports that the account upgrade
+has completed and selected Oracle again. Reuse the existing Chicago network,
+backup bucket and notification topic. The OVH cart was never submitted.
 
 This deploys the existing app on one Ubuntu 24.04 ARM64 VM (2 OCPUs, 12 GB RAM,
 100 GB boot disk). PostgreSQL 17 stores accounts, projects, embedded assets and

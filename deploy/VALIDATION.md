@@ -1,5 +1,15 @@
 # Validation record — September 26, 2026
 
+## Return to Oracle
+
+The owner reports that the Oracle account upgrade completed and selected Oracle
+again. The VM has not yet been launched. Restore the original ARM64 target and
+12 GiB host memory budget, retaining the portable architecture checks and sequential
+builds. Eighteen deployment/configuration checks pass with the Oracle settings.
+Browser automation is currently unavailable; an official OCI CLI session is being
+prepared as an alternative. Account and capacity still require live verification.
+No OVH order was submitted. The OVH section below records the earlier attempt.
+
 ## OVH transition
 
 The owner subsequently selected OVH VPS-1 at $5.35/month before tax, monthly billing.
