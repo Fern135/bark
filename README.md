@@ -52,20 +52,21 @@ The web image creates its optional `public` asset directory during the build. Sh
 ## Run in dev mode (hot reload)
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -V
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
 This bind-mounts `web/`, `server/` and `ws/` into their containers. It runs `next dev`,
 `manage.py runserver` (with `DJANGO_DEBUG=1`) and `uvicorn --reload`.
 
-`-V` (`--renew-anon-volumes`) makes web use freshly built packages. Without it, dev mode keeps
-the old `node_modules` volume and ignores changes to `engine/`, `scripting/` or `web/package.json`.
-Changes in `engine/` or `scripting/` are picked up when you rerun this command, not by hot reload.
+Changes in `engine/`, `scripting/` or `web/package.json` are picked up when you rerun this
+command, not by hot reload. On start, the web container notices when its `node_modules` volume
+is older than the freshly built image and refreshes it (`web: node_modules volume is older than
+the image; refreshing it` in the logs), so no `-V` is needed.
 
 
 <!-- migration -->
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build -V
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 docker compose exec server python manage.py migrate
 ```
 
