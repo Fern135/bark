@@ -29,6 +29,12 @@ class Config:
     DEBUG = _bool('DJANGO_DEBUG')
     ALLOWED_HOSTS = _list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
     CSRF_TRUSTED_ORIGINS = _list('DJANGO_CSRF_TRUSTED_ORIGINS', 'http://localhost:8080')
+    # Browser origins allowed to call /api/ cross-origin (the web frontend). Same-origin calls
+    # through the gateway don't need this; it's for serving the frontend from another origin.
+    CORS_ALLOWED_ORIGINS = _list('DJANGO_CORS_ALLOWED_ORIGINS', 'http://localhost:8080')
+    # Hostnames other containers use to reach Django directly on the internal network:
+    # web's server-side rendering and ws call http://server:8000.
+    INTERNAL_HOSTS = ['server']
 
     # ---- Postgres (shared with ws/) ----
     # docker compose sets POSTGRES_HOST=db; localhost is for running outside Docker.
@@ -67,6 +73,11 @@ class Config:
     # docker compose points this at the redis service so all gunicorn workers share login
     # counters. Empty (e.g. running outside Docker) means a per-process in-memory cache.
     CACHE_URL = os.environ.get('DJANGO_CACHE_URL', '')
+
+    # ---- Canvas (game library) ----
+    # Requests per user per minute across all /api/canvas/ endpoints. Scratch-style editors
+    # autosave small changes often, so this is generous.
+    CANVAS_REQUESTS_PER_MINUTE = int(os.environ.get('CANVAS_REQUESTS_PER_MINUTE', '300'))
 
     # ---- Password / username recovery ----
     # Base URL of the Next.js site, used to build the reset link in emails.

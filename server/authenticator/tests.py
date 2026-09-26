@@ -6,11 +6,9 @@ background, every time the server container starts (see server/Dockerfile and en
 
     docker compose exec server python manage.py test --parallel auto
 
-The rate limiter stores its counters in redis. Tests never touch the app's redis database
-(DB 1): they use DB 15. Each parallel worker has its own key prefix (test-<worker>) and
-deletes only its own keys before every test, so workers can't wipe each other's counters.
-Outside Docker (no DJANGO_CACHE_URL) they fall back to an in-memory cache and skip the checks
-that need real redis.
+The rate limiter stores its counters in redis. lib/testing.py keeps tests on redis DB 15
+(never the app's DB 1), with a private key prefix per parallel worker. Outside Docker (no
+DJANGO_CACHE_URL) they fall back to an in-memory cache and skip the checks that need redis.
 """
 import json
 import time
@@ -24,12 +22,12 @@ from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.core import mail, signing
 from django.core.cache import cache
-from django.db import connection
 from django.http import HttpResponse, JsonResponse
-from django.test import Client, RequestFactory, TestCase, override_settings
+from django.test import Client, RequestFactory, override_settings
 
 from lib.decorators import jwt_required, rate_limit
 from lib.decorators.rate_limit import _cache_key, aclear, body_field, clear, client_ip
+from lib.testing import APP_CACHE, TEST_REDIS_URL, USES_REDIS, IsolatedTestCase
 
 from .models import DemoEmail, User
 from .tokens import (
@@ -42,38 +40,6 @@ from .tokens import (
 
 # ---- test configuration ------------------------------------------------------------------
 
-_APP_CACHE = settings.CACHES["default"]
-USES_REDIS = _APP_CACHE["BACKEND"].endswith("RedisCache")
-# Same redis server as the app, separate database, so tests never clobber real counters.
-TEST_REDIS_URL = _APP_CACHE["LOCATION"].rsplit("/", 1)[0] + "/15" if USES_REDIS else None
-
-
-def _worker_prefix():
-    # Parallel workers each get a cloned test database: test_bark_1, test_bark_2, ...
-    # A single (non-parallel) run uses test_bark.
-    suffix = connection.settings_dict["NAME"].rsplit("_", 1)[-1]
-    return f"test-{suffix if suffix.isdigit() else 0}"
-
-
-def _test_caches(prefix):
-    if USES_REDIS:
-        return {"default": {"BACKEND": "django.core.cache.backends.redis.RedisCache", "LOCATION": TEST_REDIS_URL, "KEY_PREFIX": prefix}}
-    return {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
-
-
-def _clear_test_cache(prefix):
-    if USES_REDIS:
-        import redis
-
-        client = redis.Redis.from_url(TEST_REDIS_URL)
-        keys = list(client.scan_iter(f"{prefix}:*"))  # only this worker's keys
-        if keys:
-            client.delete(*keys)
-    else:
-        cache.clear()  # in-memory cache is already per process
-
-# Real hashing is deliberately slow; tests don't need that.
-FAST_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 DEMO_BACKEND = "authenticator.email_backends.DemoInboxBackend"
 
 PASSWORD = "Correct-Horse-9"
@@ -81,12 +47,10 @@ NEW_PASSWORD = "Brand-New-Pass-7"
 MAX_FAILURES = settings.LOGIN_MAX_FAILURES
 
 
-@override_settings(PASSWORD_HASHERS=FAST_HASHERS, DEMO_EMAIL=True)
-class AuthTestCase(TestCase):
+@override_settings(DEMO_EMAIL=True)
+class AuthTestCase(IsolatedTestCase):
     def setUp(self):
-        prefix = _worker_prefix()
-        self.enterContext(override_settings(CACHES=_test_caches(prefix)))
-        _clear_test_cache(prefix)
+        super().setUp()
         self.client = Client()
 
     def create_user(self, username="alice", email="alice@example.com", password=PASSWORD):
@@ -434,7 +398,7 @@ class RateLimitTests(AuthTestCase):
 
     @skipUnless(USES_REDIS, "needs redis (run inside Docker)")
     def test_tests_do_not_use_the_app_redis_database(self):
-        self.assertNotEqual(TEST_REDIS_URL, _APP_CACHE["LOCATION"])
+        self.assertNotEqual(TEST_REDIS_URL, APP_CACHE["LOCATION"])
 
 
 # ---- views: csrf ------------------------------------------------------------------------

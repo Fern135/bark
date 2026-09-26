@@ -27,9 +27,16 @@ SECRET_KEY = Config.SECRET_KEY
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = Config.DEBUG
 
-ALLOWED_HOSTS = Config.ALLOWED_HOSTS
+# Public hostnames plus `server`, the name web (SSR) and ws use on the internal Docker network.
+ALLOWED_HOSTS = [*Config.ALLOWED_HOSTS, *Config.INTERNAL_HOSTS]
 
 CSRF_TRUSTED_ORIGINS = Config.CSRF_TRUSTED_ORIGINS
+
+# CORS: only the web frontend's origins, only for the API, with cookies (the JWT) allowed.
+# Server-to-server calls (ws, web SSR) have no Origin header and aren't affected by CORS.
+CORS_ALLOWED_ORIGINS = Config.CORS_ALLOWED_ORIGINS
+CORS_ALLOW_CREDENTIALS = True
+CORS_URLS_REGEX = r'^/api/.*$'
 
 
 # Application definition
@@ -41,10 +48,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'corsheaders',
     'authenticator',
+    'canvas',
 ]
 
 MIDDLEWARE = [
+    # First, so CORS headers are added to every response (including errors and preflights).
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -108,6 +119,14 @@ CACHES = {
         else {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}
     )
 }
+
+
+# Canvas (game library) API: requests per user per minute (canvas/views.py)
+
+CANVAS_REQUESTS_PER_MINUTE = Config.CANVAS_REQUESTS_PER_MINUTE
+# Game documents can embed assets as base64, so allow request bodies up to the gateway's
+# 10 MB (proxy/nginx.conf client_max_body_size). Django's default is 2.5 MB.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 
 # Password / username recovery (authenticator/views.py)
