@@ -1,0 +1,17 @@
+**/node_modules
+**/.next
+**/dist
+**/dist-playground
+**/.venv
+**/__pycache__
+**/test-results
+**/playwright-report
+**/.env
+**/.env.*
+.git
+web/public/runtime
+web/public/pyodide
+web/public/havok
+web/public/scripting
+web/design
+scripting/public/pyodide

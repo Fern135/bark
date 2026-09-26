@@ -6,9 +6,13 @@ services:
     build:
       target: dev
     volumes:
-      - ./web:/app
-      - /app/node_modules
-      - /app/.next
+      - ./web:/app/web
+      - ./engine:/app/engine
+      - ./scripting:/app/scripting
+      - /app/web/node_modules
+      - /app/web/.next
+      - /app/engine/node_modules
+      - /app/scripting/node_modules
     environment:
       WATCHPACK_POLLING: "true"
 

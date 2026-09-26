@@ -1,0 +1,1598 @@
+{
+  "version": 1,
+  "project": {
+    "version": 1,
+    "name": "Woodland Wander",
+    "entities": [
+      {
+        "id": "player",
+        "name": "Little explorer",
+        "tags": [
+          "starter:player"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 1.03,
+            "z": -1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "player"
+        },
+        "collider": {
+          "shape": "capsule",
+          "size": {
+            "x": 1,
+            "y": 2,
+            "z": 1
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "dynamic",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0,
+          "friction": 0.5,
+          "rotationLocked": true
+        },
+        "properties": {},
+        "character": {
+          "speed": 5,
+          "jumpSpeed": 6,
+          "slopeLimit": 50,
+          "spawn": {
+            "position": {
+              "x": 0,
+              "y": 1.03,
+              "z": -1
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            }
+          }
+        },
+        "interaction": null
+      },
+      {
+        "id": "ground",
+        "name": "ground",
+        "tags": [
+          "ground"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -0.5,
+            "z": 11
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 18,
+            "y": 1,
+            "z": 32
+          },
+          "color": "#9DCB7E"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 18,
+            "y": 1,
+            "z": 32
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-earth",
+        "name": "island-earth",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -1.4,
+            "z": 11
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 18.3,
+            "y": 1.1,
+            "z": 32.3
+          },
+          "color": "#BBA685"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-0",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": -2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-0",
+        "name": "path-0",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.015,
+            "z": -2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-1",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": -2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-1",
+        "name": "path-1",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.178059378731055,
+            "y": 0.015,
+            "z": 0
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-2",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-2",
+        "name": "path-2",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.2730163975559543,
+            "y": 0.015,
+            "z": 2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-3",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-3",
+        "name": "path-3",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0.1975680112838141,
+            "y": 0.015,
+            "z": 4
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-4",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-4",
+        "name": "path-4",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -1.0595234934310993,
+            "y": 0.015,
+            "z": 6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-5",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-5",
+        "name": "path-5",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -1.3424939845283939,
+            "y": 0.015,
+            "z": 8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-6",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-6",
+        "name": "path-6",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -0.3911816974784962,
+            "y": 0.015,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-7",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-7",
+        "name": "path-7",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0.9197812382063046,
+            "y": 0.015,
+            "z": 12
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-8",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 14
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-8",
+        "name": "path-8",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.3851015452727344,
+            "y": 0.015,
+            "z": 14
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-9",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 14
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-9",
+        "name": "path-9",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0.5769658793384592,
+            "y": 0.015,
+            "z": 16
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-10",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-10",
+        "name": "path-10",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -0.7616295552451177,
+            "y": 0.015,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-11",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-11",
+        "name": "path-11",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -1.3999862891709849,
+            "y": 0.015,
+            "z": 20
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-12",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 22
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-12",
+        "name": "path-12",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -0.7512020852006088,
+            "y": 0.015,
+            "z": 22
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-13",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 22
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-13",
+        "name": "path-13",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0.5882338515572972,
+            "y": 0.015,
+            "z": 24
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-14",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 26
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "path-14",
+        "name": "path-14",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.3868502979728183,
+            "y": 0.015,
+            "z": 26
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 2.5,
+            "y": 0.03,
+            "z": 2
+          },
+          "color": "#DDD0A6"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-0",
+        "name": "Treasure 1",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.33000000000000007,
+            "z": 2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-1",
+        "name": "Treasure 2",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -4,
+            "y": 0.33000000000000007,
+            "z": 5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-2",
+        "name": "Treasure 3",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 4,
+            "y": 0.33000000000000007,
+            "z": 8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-3",
+        "name": "Treasure 4",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -3,
+            "y": 0.33000000000000007,
+            "z": 11
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-4",
+        "name": "Treasure 5",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 2,
+            "y": 0.33000000000000007,
+            "z": 14
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      }
+    ],
+    "assets": [
+      {
+        "id": "player",
+        "type": "model",
+        "url": "/models/starter/player.glb"
+      },
+      {
+        "id": "tree",
+        "type": "model",
+        "url": "/models/starter/tree.glb"
+      },
+      {
+        "id": "gem",
+        "type": "model",
+        "url": "/models/starter/gem.glb"
+      }
+    ],
+    "materials": [],
+    "prefabs": [],
+    "properties": {},
+    "settings": {
+      "background": "#D9F1E5",
+      "ambientIntensity": 0.65,
+      "sunIntensity": 0.8,
+      "shadows": true,
+      "resolutionScale": 1,
+      "maxDevicePixelRatio": 2,
+      "gravity": {
+        "x": 0,
+        "y": -9.81,
+        "z": 0
+      }
+    },
+    "cameras": {
+      "active": "follow",
+      "targetId": "player",
+      "target": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "offset": {
+        "x": 0,
+        "y": 9,
+        "z": -11
+      },
+      "fieldOfView": 60
+    },
+    "input": {
+      "forward": [
+        "KeyW",
+        "ArrowUp"
+      ],
+      "backward": [
+        "KeyS",
+        "ArrowDown"
+      ],
+      "left": [
+        "KeyA",
+        "ArrowLeft"
+      ],
+      "right": [
+        "KeyD",
+        "ArrowRight"
+      ],
+      "jump": [
+        "Space"
+      ],
+      "interact": [
+        "KeyE"
+      ],
+      "primary": [
+        "Mouse0"
+      ]
+    }
+  },
+  "script": {
+    "language": "python",
+    "source": "from bark import game\n\nplayer = game.entity(\"player\")\ngoals = [[0,2],[-4,5],[4,8],[-3,11],[2,14]]\ncollected = set()\nfinished = False\n\n@game.on_input(\"jump\")\nasync def jump(state):\n    if state.pressed:\n        await player.jump()\n\n@game.on_start\nasync def adventure():\n    global finished\n    await game.set_hud(\"progress\", \"Treasures\", \"0 / 5\")\n    await game.notify(\"Find every treasure. Let curiosity lead!\", 4)\n    while True:\n        right = await game.input(\"right\")\n        left = await game.input(\"left\")\n        forward = await game.input(\"forward\")\n        backward = await game.input(\"backward\")\n        await player.walk(int(right.held) - int(left.held), int(forward.held) - int(backward.held))\n        position = await player.position()\n        if position.y < -8:\n            await player.respawn()\n        if not finished:\n            pass\n            for index, goal in enumerate(goals):\n                if index in collected:\n                    continue\n                if (position.x - goal[0]) ** 2 + (position.z - goal[1]) ** 2 < 1.5 ** 2 and -1 < position.y < 3:\n                    collected.add(index)\n                    await game.entity(\"goal-\" + str(index)).destroy()\n                    await game.set_hud(\"progress\", \"Treasures\", str(len(collected)) + \" / 5\")\n                    if len(collected) == len(goals):\n                        finished = True\n                        await game.set_hud(\"result\", \"Adventure\", \"Complete!\")\n                        await game.notify(\"You did it! Restart for another adventure.\", 12)\n                    else:\n                        await game.notify(\"Found one! Keep exploring.\", 2)\n        await game.next_frame()\n"
+  }
+}

@@ -1,0 +1,41 @@
+.toolbar { position: absolute; z-index: 5; top: 18px; left: 50%; translate: -50% 0; display: flex; align-items: center; gap: 6px; padding: 6px; max-width: calc(100% - 24px); border: 1px solid #ffffff; border-radius: 17px; background: #fffefbf2; box-shadow: 0 6px 24px #243c4d20, 0 1px 3px #243c4d0a; backdrop-filter: blur(16px); color: #40505a; }
+.tools { display: flex; gap: 3px; }
+.toolbar button, .history button, .popover button { font: inherit; cursor: pointer; color: inherit; border: 0; }
+.tools button { position: relative; padding: 11px 12px; border-radius: 11px; background: transparent; font-size: 13px; font-weight: 800; }
+.tools button[aria-pressed=true] { color: #fff; }
+.tools button:hover:not([aria-pressed=true]) { background: #ece9e3; }
+.active { position: absolute; inset: 0; border-radius: inherit; background: #357c67; box-shadow: inset 0 1px 0 #ffffff25, 0 2px 5px #224c3320; }
+.toolContent { position: relative; z-index: 1; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+.toolContent kbd { font: inherit; font-size: 10px; opacity: .55; margin-left: 3px; background: transparent; color: inherit; padding: 0; border: 0; }
+.divider { align-self: stretch; width: 1px; background: #dedfd7; margin: 6px 2px; }
+.settingsTrigger { display: flex; align-items: center; gap: 6px; background: transparent; padding: 11px 8px; border-radius: 10px; font-size: 12px !important; font-weight: 800 !important; white-space: nowrap; }
+.settingsTrigger:hover, .settingsTrigger[data-state=open] { background: #eeeee7; }
+.history { position: absolute; top: 86px; left: 18px; display: flex; gap: 3px; border-radius: 12px; padding: 4px; background: #fffefbef; border: 1px solid white; box-shadow: 0 3px 12px #243c4d12; }
+.history button { display: grid; place-items: center; height: 32px; width: 32px; background: transparent; border-radius: 8px; color: #496158; }
+.history button:hover:enabled { background: #e7efe8; }
+.toolbar button:disabled, .history button:disabled, .popover button:disabled { opacity: .35; cursor: default; }
+.toolbar button:focus-visible, .history button:focus-visible, .popover button:focus-visible { outline: 2px solid #357c67; outline-offset: 3px; }
+.readout { position: absolute; pointer-events: none; z-index: 4; left: 50%; bottom: 76px; translate: -50% 0; display: flex; align-items: center; gap: 10px; max-width: calc(100% - 32px); padding: 9px 14px; border-radius: 12px; background: #fffefbef; box-shadow: 0 4px 18px #243c4d15; font-size: 12px; font-weight: 750; color: #466154; text-align: center; }
+.readout kbd { font: inherit; font-size: 10px; color: #8b968f; white-space: nowrap; }
+.liveDot { width: 6px; height: 6px; border-radius: 50%; background: #369d70; flex-shrink: 0; }
+.popover { z-index: 80; width: 282px; padding: 20px; border: 1px solid #e5e7df; border-radius: 18px; background: #fffefb; color: #354b40; box-shadow: 0 12px 48px #243c4d29; font-family: inherit; animation: appear .15s ease-out; }
+.popover h3 { margin: 0 0 17px; font-size: 16px; }
+.toggle { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; }
+.toggle input { accent-color: #357c67; width: 18px; height: 18px; }
+.increments { display: grid; gap: 10px; margin: 16px 0 18px; }
+.increments label { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.increments label > span { display: flex; align-items: center; gap: 7px; color: #7e8d83; width: 116px; }
+.increments input { width: 74px; padding: 6px 8px; border: 1px solid #dce3d9; border-radius: 7px; background: #f6f7f1; color: #354b40; font: inherit; }
+.label { font-size: 11px; font-weight: 800; }
+.segment { display: flex; background: #eef1e9; border-radius: 9px; padding: 3px; margin-top: 7px; }
+.segment button { flex: 1; background: transparent; border-radius: 7px; padding: 7px; font-size: 12px; }
+.segment button[aria-pressed=true] { background: white; box-shadow: 0 1px 3px #253c4920; font-weight: 800; }
+.camera { display: flex; justify-content: space-between; border-top: 1px solid #e5e7df; padding-top: 13px; margin-top: 18px; }
+.camera button { background: transparent; font-size: 12px; padding: 3px 0; }
+.camera kbd { padding: 1px 4px; border: 1px solid #dde3d8; border-radius: 3px; margin-left: 3px; font-size: 10px; }
+.popover p { font-size: 11px; line-height: 1.7; color: #849084; margin: 14px 0 0; }
+.arrow { fill: #fffefb; }
+@keyframes appear { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 1200px) { .toolContent kbd { display: none; } .tools button { padding: 10px; } }
+@media (max-width: 600px) { .toolbar { top: 12px; gap: 3px; padding: 5px; } .toolContent { flex-direction: column; gap: 3px; font-size: 10px; } .tools button { padding: 7px 10px; } .settingsTrigger > span { display: none; } .history { left: 12px; } .readout { bottom: 72px; font-size: 10px; } .readout kbd { display: none; } }
+@media (prefers-reduced-motion: reduce) { .popover { animation: none; } }

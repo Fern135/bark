@@ -24,8 +24,8 @@ from outside, and they cannot reach the internet. The browser only talks to the 
 API call comes from the Next.js frontend on the same origin. The ws service also rejects any
 socket whose `Origin` isn't in `WS_ALLOWED_ORIGINS`, and any connection without a valid JWT.
 
-`engine` and `scripting` never run as containers. Their images only build the packages, and web's
-image build is the only thing that uses them (see [engine/ and scripting/](#engine-and-scripting)).
+`engine` and `scripting` never run as containers. The web image builds both browser packages
+from the repository root (see [engine/ and scripting/](#engine-and-scripting)).
 
 ---
 
@@ -55,13 +55,12 @@ The web image creates its optional `public` asset directory during the build. Sh
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-This bind-mounts `web/`, `server/` and `ws/` into their containers. It runs `next dev`,
+This bind-mounts `web/`, `engine/`, `scripting/`, `server/` and `ws/` into their containers. It runs `next dev`,
 `manage.py runserver` (with `DJANGO_DEBUG=1`) and `uvicorn --reload`.
 
 Changes in `engine/`, `scripting/` or `web/package.json` are picked up when you rerun this
-command, not by hot reload. On start, the web container notices when its `node_modules` volume
-is older than the freshly built image and refreshes it (`web: node_modules volume is older than
-the image; refreshing it` in the logs), so no `-V` is needed.
+command, not by hot reload. On start, the web container refreshes outdated `node_modules`
+volumes for all three JavaScript packages from the freshly built image, so no `-V` is needed.
 
 
 <!-- migration -->
@@ -186,22 +185,16 @@ that server.
 ## engine/ and scripting/
 
 Both are browser libraries (rendering, physics and Python all run in the user's tab), bundled
-into web. They connect to web **only through Docker**:
+into web through local `file:` dependencies. `web/Dockerfile` uses the repository root as its
+build context, installs all three packages, and builds the engine and scripting packages before
+Next.js. They have no running service or network endpoint.
 
-1. `engine/Dockerfile` builds `@bark/engine` into a build-only image.
-2. `scripting/Dockerfile` builds `@bark/scripting` against that engine image. It gets it through
-   the `engine` build context in `docker-compose.yml`.
-3. `web/Dockerfile` copies both into `node_modules/@bark/` via its `engine` and `scripting`
-   build contexts.
+For local development, run `npm ci` in `engine/`, `scripting/`, and `web/`, then `npm run dev`
+in `web/`. Open `/editor` to build a world or `/games` for the game library.
 
-They have `scale: 0` in `docker-compose.yml`: compose builds them but never creates a container,
-and they join no network, so `server`, `ws`, `db` and `proxy` cannot reach them. `web/package.json`
-does not reference them, so the integrated game runtime runs through docker compose.
-Outside Docker, `npm run dev` in `web/` stops with an explanation; the direct Next.js
-commands above can still preview the standalone marketing UI.
-
-The `npm run dev` / `npm run build` hooks run `web/scripts/copy-game-assets.mjs` to copy runtime files into
-`web/public/` (gitignored). The web container has no internet, so everything is served locally:
+The `npm run dev` / `npm run build` hooks run `prepare:editor` to build the packages and copy
+runtime files into `web/public/` (gitignored). Both the editor's `/runtime/` paths and the
+existing URLs below are generated. The web container has no internet, so everything is served locally:
 
 | URL | What |
 | --- | --- |

@@ -37,6 +37,8 @@ export interface ActionState { pressed: boolean; held: boolean; released: boolea
 export interface QueryOptions { excludeId?: EntityId; includeTriggers?: boolean; mask?: number; membership?: number }
 export interface SpatialHit { entityId: EntityId; point: Vec3; normal: Vec3; distance: number }
 export interface EngineEvents {
+  editorSelection: { entityId: EntityId | null };
+  editorTransform: { phase: "preview" | "commit" | "cancel"; entityId: EntityId; before: Transform; transform: Transform; label: string };
   state: { previous: RuntimeState; state: RuntimeState };
   error: { code: ErrorCode; message: string };
   entity: { action: "created" | "updated" | "destroyed"; entityId: EntityId };
@@ -84,11 +86,12 @@ export type EngineCommand =
   | { type: "camera"; settings: Partial<CameraSettings> } | { type: "interact"; id: EntityId; actorId?: EntityId };
 export interface RuntimeOptions { canvas: HTMLCanvasElement; havokWasmUrl: string; signal?: AbortSignal; limits?: Partial<RuntimeLimits> }
 export interface GameRuntime {
+  readonly editorTools: EditorToolsAPI;
   readonly state: RuntimeState; readonly world: World; readonly transforms: TransformAPI; readonly physics: PhysicsAPI;
   readonly clock: ClockSnapshot;
   readonly settings: SceneSettings;
   readonly input: { action(name: string): ActionState; pointer(): { x: number; y: number }; bindings(): InputBindings };
-  readonly cameras: { get(): CameraSettings; set(settings: Partial<CameraSettings>): void; forward(): Vec3; ray(x: number, y: number): { from: Vec3; to: Vec3 } };
+  readonly cameras: { get(): CameraSettings; set(settings: Partial<CameraSettings>): void; frame(id?: EntityId, padding?: number): void; forward(): Vec3; ray(x: number, y: number): { from: Vec3; to: Vec3 } };
   readonly assets: { list(): AssetDefinition[] };
   readonly characters: CharacterAPI; readonly interactions: InteractionAPI; readonly properties: PropertiesAPI;
   readonly motion: MotionAPI; readonly feedback: FeedbackAPI; readonly placement: PlacementAPI;
@@ -99,6 +102,17 @@ export interface GameRuntime {
   dispatch<C extends EngineCommand>(command: C): C extends { type: "spawn" } ? EntityId : C extends { type: "destroy" } ? boolean : void;
   on<K extends keyof EngineEvents>(type: K, listener: (event: EngineEvents[K]) => void, options?: { scope?: "runtime" | "session" }): () => void;
   onUpdate(listener: (clock: ClockSnapshot) => void): () => void;
+}
+
+export type EditorTool = "select" | "move" | "resize" | "rotate";
+export interface EditorToolOptions {
+  enabled: boolean; selected: EntityId | null; tool: EditorTool; space: "world" | "local";
+  snapping: boolean; moveSnap: number; resizeSnap: number; rotateSnap: number;
+}
+export interface EditorToolsAPI {
+  configure(options: Partial<EditorToolOptions>): void;
+  get(): EditorToolOptions;
+  cancel(): void;
 }
 
 export type JsonValue = null | boolean | string | number | JsonValue[] | { [key: string]: JsonValue };

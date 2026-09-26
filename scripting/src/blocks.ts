@@ -1,6 +1,8 @@
 import * as Blockly from "blockly";
 import "blockly/blocks";
 import * as En from "blockly/msg/en";
+// Hosts must inject editors with the instance that owns Bark's block definitions.
+export { Blockly };
 import type {
   Compilation,
   Diagnostic,

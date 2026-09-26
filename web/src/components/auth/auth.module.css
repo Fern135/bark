@@ -1,0 +1,46 @@
+﻿.page { min-height: 100dvh; color: #10104d; background: radial-gradient(ellipse at 7% 40%, #e5f5fc88, transparent 50%), #f6fafc; position: relative; isolation: isolate; padding: 0 32px; }
+.page::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background-image: radial-gradient(#bdcfe470 .8px, transparent .8px); background-size: 24px 24px; mask-image: linear-gradient(90deg, #000, transparent 25%, transparent 75%, #000); }
+.page a { text-decoration: none; }
+.page a:focus-visible { outline: 3px solid var(--bark-focus); outline-offset: 5px; border-radius: 5px; }
+.header { max-width: 1180px; margin: auto; min-height: 100px; display: flex; align-items: center; justify-content: space-between; }
+.brand { display: inline-flex; align-items: flex-start; color: #10104d; font-size: 49px; line-height: 1; font-weight: 1000; letter-spacing: -4px; }
+.brand > span { color: #10aa66; font-size: 27px; margin: -5px 0 0 6px; }
+.homeLink { display: inline-flex; align-items: center; gap: 10px; color: #57698d; font-size: 13px; font-weight: 800; padding: 10px 0; }
+.homeLink > span { transform: rotate(180deg); display: flex; transition: transform .2s; }
+.homeLink:hover { color: #087cf0; }.homeLink:hover > span { transform: rotate(180deg) translateX(3px); }
+.main { max-width: 1180px; margin: 0 auto; }
+.shell { overflow: hidden; border-radius: 30px; border: 1px solid white; box-shadow: 0 16px 70px #365d8710; }
+.shell > div { padding: 0 !important; }
+.split { display: grid; grid-template-columns: 51% 49%; min-height: 660px; }
+.artPanel { display: flex; flex-direction: column; position: relative; background: #e8f5ff; overflow: hidden; border-radius: 28px; min-height: 660px; isolation: isolate; }
+.signup .artPanel { background: #f0ebff; }
+.artPanel::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(#9bb5d749 1px, transparent 1px); background-size: 21px 21px; mask-image: linear-gradient(#000a, transparent 60%); z-index: -1; }
+.artCopy { flex-shrink: 0; padding: 40px 45px 0; position: relative; z-index: 2; pointer-events: none; }
+.eyebrow { display: block; color: #677e9e; font-size: 9px; letter-spacing: .12em; line-height: 1.7; font-weight: 900; margin-bottom: 14px; }
+.artCopy h2 { font-size: clamp(42px, 4.2vw, 59px); font-weight: 1000; letter-spacing: -.055em; line-height: 1.03; margin: 0 0 15px; }
+.artCopy h2 em { color: #087cf0; font-style: normal; }.signup .artCopy h2 em { color: #8450e5; }
+.artCopy p { color: #657c98; font-size: 14px; line-height: 1.7; max-width: 290px; margin: 0; }
+.illustration { position: relative; width: min(88%, 420px); margin: auto auto 30px; flex-shrink: 0; }
+.illustration img { width: 100%; height: auto; display: block; mask-image: radial-gradient(ellipse, #000 43%, #000e 60%, transparent 75%); }
+.artBadge { position: absolute; z-index: 3; bottom: 95px; right: 24px; display: flex; align-items: center; gap: 10px; padding: 12px 16px 12px 10px; background: #ffffffed; border: 1px solid white; border-radius: 16px; box-shadow: 0 7px 24px #3153750b; font-size: 11px; color: #6c7d98; }
+.artBadge > span { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 12px; color: #0b9f67; background: #e3f5e4; }.signup .artBadge > span { color: #8a53dc; background: #efe5ff; }.artBadge strong { display: block; font-size: 12px; color: #243154; margin-top: 3px; }
+.starOne { position: absolute; top: 44%; left: 9%; color: #ffc34b; font-size: 45px; z-index: 2; }.starTwo { position: absolute; right: 10%; top: 31%; color: #70b59f; font-size: 34px; z-index: 2; }.signup .starTwo { color: #b392e2; }
+.artFooter { position: absolute; display: flex; gap: 8px; justify-content: center; align-items: center; bottom: 5px; left: 20px; right: 20px; font-size: 10px; font-weight: 700; color: #607b97; z-index: 2; }
+.formPanel { display: flex; align-items: center; justify-content: center; padding: 40px 48px; background: #fff; }
+.formInner { width: 100%; max-width: 365px; }
+.formHeading { margin-bottom: 25px; }.formHeading .eyebrow { font-size: 8px; letter-spacing: .12em; color: #8491a9; margin-bottom: 12px; }
+.formHeading h1 { font-weight: 1000; letter-spacing: -.05em; font-size: 37px; line-height: 1.1; margin: 0 0 13px; }
+.formHeading p { font-size: 13px; color: #7a87a0; margin: 0; line-height: 1.65; }
+.formPanel .googleButton { width: 100%; background: #fff; color: #1f1f1f; border: 1px solid #747775; box-shadow: none; border-radius: 14px; font-size: 14px; font-weight: 500; min-height: 48px; gap: 10px; }
+.googleButton img { flex-shrink: 0; }
+.divider { display: flex; gap: 14px; align-items: center; margin: 22px 0; color: #8993a8; font-size: 11px; }.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #e7edf5; }
+.form { display: flex; flex-direction: column; gap: 17px; }.form label { font-family: inherit; font-size: 13px; }.form input { min-height: 48px; background: #fbfdff; font-size: 13px; border-color: #e0e8f3; }.form input::placeholder { color: #929eb3; }
+.submit { width: 100%; min-height: 49px; margin-top: 4px; font-size: 14px; }
+.feedbackWrap { overflow: hidden; }.feedback { display: flex; align-items: flex-start; gap: 9px; background: #eff6ff; color: #365c88; border: 1px solid #d9e8fc; border-radius: 13px; font-size: 12px; line-height: 1.65; padding: 13px; margin: 15px 0 0; }.feedback svg { flex-shrink: 0; margin-top: 2px; }
+.switchPage { text-align: center; font-size: 12px; color: #7b86a0; margin: 22px 0 24px; }.switchPage a { display: inline-flex; gap: 5px; align-items: center; font-weight: 900; color: #0873e0; margin-left: 4px; }.switchPage a:hover { text-decoration: underline; }
+.previewNote { border-top: 1px solid #edf0f7; padding-top: 18px; color: #8b95a9; font-size: 10px; display: flex; gap: 7px; align-items: flex-start; justify-content: center; margin: 0; line-height: 1.6; }.previewNote > span { border: 1px solid currentColor; width: 12px; height: 12px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; margin-top: 2px; flex-shrink: 0; }
+.footer { max-width: 1180px; display: flex; justify-content: center; align-items: center; gap: 8px; padding: 23px 12px 27px; font-size: 10px; color: #8898ad; }.footer svg { color: #cfad67; }
+@media (min-width: 1450px) { .main, .header { max-width: 1240px; }.header { min-height: 112px; }.split, .artPanel { min-height: 710px; }.formPanel { padding-block: 55px; }.formInner { max-width: 380px; }.formHeading h1 { font-size: 41px; }.artCopy { flex-shrink: 0; padding: 46px 50px 0; }.illustration { width: min(88%, 420px); } }
+@media (max-width: 1000px) { .page { padding-inline: 22px; }.header { min-height: 85px; }.split { grid-template-columns: 46% 54%; }.artCopy { flex-shrink: 0; padding: 32px 27px 0; }.artCopy h2 { font-size: 44px; }.artCopy p { font-size: 12px; }.artCopy .eyebrow { font-size: 8px; }.formPanel { padding: 34px 30px; }.formHeading h1 { font-size: 33px; }.illustration { width: min(105%, 380px); margin-bottom: 45px; }.artBadge { right: 18px; bottom: 100px; font-size: 10px; }.artBadge strong { font-size: 11px; }.starTwo { right: 7%; top: 35%; font-size: 27px; } }
+@media (max-width: 700px) { .page { padding-inline: 17px; }.header { min-height: 79px; }.brand { font-size: 40px; }.brand > span { font-size: 23px; }.homeLink { font-size: 11px; gap: 7px; }.shell { border-radius: 23px; }.split { display: block; min-height: 0; }.artPanel { border-radius: 22px 22px 0 0; min-height: 133px; }.artCopy { flex-shrink: 0; padding: 25px 21px; width: 65%; }.artCopy h2 { font-size: 27px; line-height: 1.08; margin: 0; }.artCopy h2 br { display: none; }.artCopy .eyebrow, .artCopy p, .artBadge, .artFooter, .starTwo { display: none; }.illustration { position: absolute; width: 150px; left: auto; right: -6px; bottom: -28px; margin: 0; }.starOne { font-size: 24px; left: auto; right: 130px; top: 11px; }.formPanel { padding: 28px 25px; }.formHeading { margin-bottom: 21px; }.formHeading h1 { font-size: 32px; }.formHeading .eyebrow { font-size: 7px; }.formHeading p { font-size: 12px; }.divider { margin-block: 20px; }.form { gap: 16px; }.switchPage { margin-block: 22px; }.previewNote { font-size: 9px; }.footer { padding-block: 19px; }.signup .artCopy { width: 63%; } }
+@media (max-width: 370px) { .page { padding-inline: 12px; }.formPanel { padding-inline: 20px; }.formHeading h1 { font-size: 29px; }.artCopy { padding-left: 18px; }.artCopy h2 { font-size: 25px; }.illustration { width: 133px; right: -8px; bottom: -18px; } }

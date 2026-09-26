@@ -1,0 +1,65 @@
+{
+  "player": {
+    "file": "player.glb",
+    "source": "Bark original rounded meshes",
+    "size": {
+      "x": 1.7206271152652732,
+      "y": 2,
+      "z": 1.1495327102803738
+    }
+  },
+  "tree": {
+    "file": "tree.glb",
+    "source": "Bark original rounded meshes",
+    "size": {
+      "x": 2.551495028099753,
+      "y": 3.6,
+      "z": 1.5920485505911683
+    }
+  },
+  "bush": {
+    "file": "bush.glb",
+    "source": "Bark original rounded meshes",
+    "size": {
+      "x": 1.3168421052631576,
+      "y": 0.9,
+      "z": 0.7091495200568231
+    }
+  },
+  "flower": {
+    "file": "flower.glb",
+    "source": "Bark original rounded meshes",
+    "size": {
+      "x": 0.5545661668519742,
+      "y": 0.9,
+      "z": 0.17264338558805353
+    }
+  },
+  "rock": {
+    "file": "rock.glb",
+    "source": "Bark original rounded meshes",
+    "size": {
+      "x": 1.6932147854490454,
+      "y": 1.1,
+      "z": 1.177215492505635
+    }
+  },
+  "fence": {
+    "file": "fence.glb",
+    "source": "Bark original rounded meshes",
+    "size": {
+      "x": 1.6789473684210525,
+      "y": 1.1,
+      "z": 0.2479824561403509
+    }
+  },
+  "bridge": {
+    "file": "bridge.glb",
+    "source": "Bark original rounded meshes",
+    "size": {
+      "x": 2.4277456647398847,
+      "y": 1,
+      "z": 1.1213872832369942
+    }
+  }
+}

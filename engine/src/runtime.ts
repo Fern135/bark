@@ -18,12 +18,13 @@ import { Input } from "./input.js";
 import { Cameras } from "./cameras.js";
 import { Gameplay } from "./gameplay.js";
 import { Placement } from "./placement.js";
+import { EditorTools } from "./editor-tools.js";
 import { EngineError, cancelled } from "./errors.js";
 import { validateProject, settings as validateSettings } from "./project.js";
 import type { CameraSettings, ClockSnapshot, EngineCommand, EngineEvents, GameRuntime, ProjectDocument, RuntimeOptions, RuntimeState, SceneSettings, PropertyMap, RuntimeLimits } from "./types.js";
 
 type Havok = Awaited<ReturnType<typeof HavokPhysics>>;
-interface Bundle { scene: Scene; plugin: HavokPlugin; assets: Assets; world: RuntimeWorld; cameras: Cameras; ambient: HemisphericLight; sun: DirectionalLight; shadow: ShadowGenerator | null; settings: SceneSettings }
+interface Bundle { scene: Scene; plugin: HavokPlugin; assets: Assets; world: RuntimeWorld; cameras: Cameras; ambient: HemisphericLight; sun: DirectionalLight; shadow: ShadowGenerator | null; settings: SceneSettings; tools?: EditorTools }
 const havokModules = new Map<string, Promise<Havok>>();
 function loadHavok(url: string): Promise<Havok> {
   let loading = havokModules.get(url);
@@ -49,6 +50,16 @@ export class Runtime implements GameRuntime {
   private sessionEpoch = 0;
   readonly limits: RuntimeLimits;
   readonly placement: Placement;
+  private toolOptions: Partial<import("./types.js").EditorToolOptions> | null = null;
+  readonly editorTools = {
+    configure: (options: Partial<import("./types.js").EditorToolOptions>) => {
+      const bundle = this.bundle();
+      bundle.tools ??= new EditorTools(bundle.scene, bundle.world, bundle.cameras, this.events, () => this.status === "editing", this.canvas);
+      bundle.tools.configure(options); this.toolOptions = bundle.tools.get();
+    },
+    get: () => { if (!this.bundle().tools) this.editorTools.configure({}); return this.bundle().tools!.get(); },
+    cancel: () => this.current?.tools?.cancel(),
+  };
   get characters() { return this.gameplay.characters; }
   get interactions() { return this.gameplay.interactions; }
   get properties() { return this.gameplay.properties; }
@@ -75,6 +86,7 @@ export class Runtime implements GameRuntime {
   get settings(): SceneSettings { return structuredClone(this.bundle().settings); }
   readonly assets = { list: () => structuredClone(this.bundle().assets.project.assets) };
   readonly cameras = {
+    frame: (id?: string, padding?: number) => { this.writable(); this.bundle().cameras.frame(id, padding); },
     get: () => this.bundle().cameras.get(),
     set: (value: Partial<CameraSettings>) => { this.writable(); this.bundle().cameras.set(value); if (this.status === "editing") this.authored!.cameras = this.bundle().cameras.get(); },
     forward: () => this.bundle().cameras.forward(),
@@ -97,6 +109,7 @@ export class Runtime implements GameRuntime {
     if (this.sessionEpoch === epoch && this.state === "error") this.events.emit("error", { code: error.code, message: error.message }, () => this.sessionEpoch === epoch);
   }
   private resetSession(resetClock = true): void {
+    this.current?.tools?.cancel();
     this.sessionEpoch++; this.events.clear(true); this.updates.clear();
     this.input.setEnabled(false); this.placement.cancel(); this.gameplay.reset(); this.accumulator = 0;
     if (resetClock) this.time = { elapsed: 0, tick: 0, delta: 1 / 60 };
@@ -139,16 +152,18 @@ export class Runtime implements GameRuntime {
       sun.autoCalcShadowZBounds = true;
       // Callbacks capture this bundle only after construction has finished.
       const world = new RuntimeWorld(scene, plugin, assets, this.events, () => { if (staged) this.changed(staged); }, this.writable, this.limits.entities);
-      world.beforeMutation = (id, changes) => this.gameplay.mutation(id, changes);
+      world.beforeMutation = (id, changes) => { staged?.tools?.cancel(); this.gameplay.mutation(id, changes); };
       this.constructing = true;
       try { world.replace(project.entities); } finally { this.constructing = false; }
       const cameras = new Cameras(scene, world, { ...project.cameras, active: "editor" }, this.canvas);
       staged = { scene, assets, plugin, world, cameras, ambient, sun, shadow: null, settings: project.settings };
       this.applySettings(staged, project.settings);
+      await abortable(scene.whenReadyAsync(), controller.signal, () => {});
       cancelled(controller.signal);
       if (generation !== this.generation) throw new EngineError("CANCELLED", "Load superseded.");
       this.release(this.current); this.current = staged; this.authored = project; this.propertyValues = structuredClone(project.properties ?? {}); this.loading = null;
       this.input.configure(project.input); this.transition("editing"); this.resize();
+      if (this.toolOptions) this.editorTools.configure(this.toolOptions);
     } catch (error) {
       if (staged) this.release(staged); else { assets.dispose(); scene.dispose(); }
       const failure = controller.signal.aborted ? new EngineError("CANCELLED", "Load cancelled.") : error instanceof EngineError ? error : new EngineError("ASSET_LOAD", String(error));
@@ -227,7 +242,7 @@ export class Runtime implements GameRuntime {
     }
     return result as C extends { type: "spawn" } ? string : C extends { type: "destroy" } ? boolean : void;
   }
-  private release(bundle: Bundle | null): void { if (!bundle) return; bundle.cameras.dispose(); bundle.world.dispose(); bundle.shadow?.dispose(); bundle.assets.dispose(); bundle.scene.dispose(); }
+  private release(bundle: Bundle | null): void { if (!bundle) return; bundle.tools?.dispose(); bundle.cameras.dispose(); bundle.world.dispose(); bundle.shadow?.dispose(); bundle.assets.dispose(); bundle.scene.dispose(); }
   dispose(): void {
     if (this.status === "disposed") return;
     this.invalidateLoad(); this.resetSession(); this.engine.stopRenderLoop(this.render); this.input.dispose(); this.release(this.current); this.current = null; this.authored = null; this.propertyValues = {}; this.engine.dispose(); this.transition("disposed", true); this.events.clear();

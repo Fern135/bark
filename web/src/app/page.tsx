@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
-import { Nunito } from "next/font/google";
+import { nunito } from "@/lib/fonts";
 import { Landing } from "@/components/landing/landing";
 
-const nunito = Nunito({ subsets: ["latin"], display: "swap" });
 export const metadata: Metadata = {
   title: "Bark — Big ideas. Little blocks. Your world.",
   description: "A little imagination goes a long way. Explore Bark, meet Byte, and try a playful game creation demo right in your browser.",

@@ -10,6 +10,8 @@ import { Input } from "../dist/input.js";
 import { Events } from "../dist/events.js";
 import { abortable } from "../dist/assets.js";
 import { attachDemo } from "../.validation/test/demo.js";
+import { resizeTransform, snap } from "../dist/editor-transform.js";
+import { Vector3, Quaternion, Matrix } from "@babylonjs/core/Maths/math.vector.js";
 
 const havok = await HavokPhysics({ wasmBinary: await readFile(new URL("../node_modules/@babylonjs/havok/lib/esm/HavokPhysics.wasm", import.meta.url)) });
 const v = (x, y, z) => ({ x, y, z });
@@ -28,6 +30,76 @@ async function fixture(t, p = project(), limits = {}) {
   return { runtime, engine, step(n = 60) { for (let i = 0; i < n; i++) runtime.advance(1 / 60); } };
 }
 function near(actual, expected, tolerance = 0.07) { assert.ok(Math.abs(actual - expected) < tolerance, `${actual} should be near ${expected}`); }
+
+test("face resizing anchors rotated off-center bounds and supports center, uniform, snap and minimum size", () => {
+  const q = Quaternion.RotationYawPitchRoll(0.8, 0.3, 0);
+  const start = { position: v(3, 4, 5), rotation: { x: q.x, y: q.y, z: q.z, w: q.w }, scale: v(2, 1, 3) };
+  const bounds = { min: new Vector3(1, -1, -2), max: new Vector3(3, 3, 2) };
+  const world = (t, point) => Vector3.TransformCoordinates(point, Matrix.Compose(new Vector3(t.scale.x, t.scale.y, t.scale.z), new Quaternion(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w), new Vector3(t.position.x, t.position.y, t.position.z)));
+  for (const side of [-1, 1]) for (const centered of [false, true]) for (const uniform of [false, true]) {
+    const next = resizeTransform(start, bounds, "x", side, side * snap(1.12, 0.25), uniform, centered, 0.01);
+    const anchor = new Vector3(centered ? 2 : side > 0 ? 1 : 3, 1, 0);
+    assert.ok(Vector3.Distance(world(start, anchor), world(next, anchor)) < 1e-6);
+    near(next.scale.x, centered ? 3 : 2.5, 1e-6);
+    near(next.scale.y, uniform ? next.scale.x / 2 : 1, 1e-6);
+  }
+  const tiny = resizeTransform(start, bounds, "x", 1, -100, true, false, 0.01);
+  near(tiny.scale.y, 0.01, 1e-6); assert.equal(snap(0.38, 0.25), 0.5); assert.equal(snap(0.38, 0), 0.38);
+});
+
+test("editor preview leaves authored data and physics untouched until one commit, and lifecycle cancels", async (t) => {
+  const { runtime: r } = await fixture(t);
+  const original = r.exportProject(), events = [];
+  r.on("editorTransform", (event) => events.push(event));
+  r.editorTools.configure({ enabled: true, selected: "box" });
+  const tools = r.current.tools;
+  const beforeBody = r.world.identity("box").body;
+  tools.begin();
+  const moved = { ...r.world.get("box").worldTransform, position: v(3, 4, 0) };
+  tools.preview(moved, "5 units");
+  assert.deepEqual(r.exportProject(), original);
+  assert.deepEqual(r.world.definitions(), original.entities);
+  assert.equal(r.world.identity("box").body, beforeBody);
+  near(r.world.get("box").worldTransform.position.x, 3);
+  r.editorTools.cancel(); near(r.world.get("box").transform.position.x, -2);
+  tools.begin(); tools.preview(moved, "5 units"); tools.finish();
+  assert.equal(events.filter((event) => event.phase === "commit").length, 1);
+  assert.notEqual(r.world.identity("box").body, beforeBody);
+  near(r.exportProject().entities.find((e) => e.id === "box").transform.position.x, 3);
+  const saved = r.exportProject(); tools.begin(); tools.preview({ ...moved, position: v(20, 4, 0) }, "17 units");
+  r.play(); assert.deepEqual(r.exportProject(), saved); r.stop(); near(r.world.get("box").transform.position.x, 3);
+  assert.equal(r.exportProject().entities.length, 3);
+  tools.begin(); tools.preview({ ...moved, position: v(30, 4, 0) }, "27 units");
+  r.world.update("box", { name: "Renamed" });
+  near(r.world.get("box").transform.position.x, 3);
+  near(r.exportProject().entities.find((e) => e.id === "box").transform.position.x, 3);
+});
+
+test("editor preview converts parent space and rejects restricted transforms without losing last valid pose", async (t) => {
+  const p = project();
+  p.entities.push(defineEntity({ id: "group", transform: { position: v(10, 0, 0), scale: v(2, 2, 2) } }), defineEntity({ id: "child", parentId: "group", visual: { kind: "box", size } }));
+  const { runtime: r } = await fixture(t, p);
+  const preview = r.world.beginEditorTransform("child");
+  const next = { ...r.world.get("child").worldTransform, position: v(14, 2, 0) };
+  assert.deepEqual(preview.preview(next).position, v(2, 1, 0)); preview.commit();
+  assert.deepEqual(r.world.get("child").transform.position, v(2, 1, 0));
+  const sphere = r.world.beginEditorTransform("ball"), original = r.world.get("ball").worldTransform;
+  assert.throws(() => sphere.preview({ ...original, scale: v(2, 1, 1) }), /uniform/);
+  assert.deepEqual(r.world.get("ball").worldTransform, original); sphere.cancel();
+});
+
+test("camera framing includes descendants and preserves the authored document", async (t) => {
+  const p = createProject();
+  p.entities = [defineEntity({id:"group",transform:{position:v(10,0,0)}}), object("child","box",v(2,1,0),{parentId:"group",body:null,collider:null})];
+  const {runtime:r,engine} = await fixture(t,p), authored=r.exportProject();
+  r.cameras.frame("group");
+  const camera=engine.scenes[0].activeCamera;
+  near(camera.target.x,12); near(camera.target.y,1);
+  const radius=camera.radius;r.cameras.frame("group",2);assert.ok(camera.radius>radius);
+  assert.deepEqual(r.exportProject(),authored);
+  assert.throws(()=>r.cameras.frame("group",NaN));
+  r.cameras.frame();assert.deepEqual(r.exportProject(),authored);
+});
 
 test("subtree destruction cannot cross Stop or delete callback-created replacements", async (t) => {
   const p = createProject(); p.entities = [defineEntity({ id: "parent" }), defineEntity({ id: "child", parentId: "parent" })];

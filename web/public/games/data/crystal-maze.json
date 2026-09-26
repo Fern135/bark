@@ -1,0 +1,1095 @@
+{
+  "version": 1,
+  "project": {
+    "version": 1,
+    "name": "Crystal Maze",
+    "entities": [
+      {
+        "id": "player",
+        "name": "Little explorer",
+        "tags": [
+          "starter:player"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 1.03,
+            "z": -1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "player"
+        },
+        "collider": {
+          "shape": "capsule",
+          "size": {
+            "x": 1,
+            "y": 2,
+            "z": 1
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "dynamic",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0,
+          "friction": 0.5,
+          "rotationLocked": true
+        },
+        "properties": {},
+        "character": {
+          "speed": 5,
+          "jumpSpeed": 6,
+          "slopeLimit": 50,
+          "spawn": {
+            "position": {
+              "x": 0,
+              "y": 1.03,
+              "z": -1
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            }
+          }
+        },
+        "interaction": null
+      },
+      {
+        "id": "ground",
+        "name": "ground",
+        "tags": [
+          "ground"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -0.5,
+            "z": 11
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 18,
+            "y": 1,
+            "z": 32
+          },
+          "color": "#7978AC"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 18,
+            "y": 1,
+            "z": 32
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-earth",
+        "name": "island-earth",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -1.4,
+            "z": 11
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 18.3,
+            "y": 1.1,
+            "z": 32.3
+          },
+          "color": "#BBA685"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-0",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 0.5800000000000001,
+            "z": -2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-1",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 0.5800000000000001,
+            "z": -2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-2",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 0.5800000000000001,
+            "z": 2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-3",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 0.5800000000000001,
+            "z": 2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-4",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 0.5800000000000001,
+            "z": 6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-5",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 0.5800000000000001,
+            "z": 6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-6",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 0.5800000000000001,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-7",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 0.5800000000000001,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-8",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 0.5800000000000001,
+            "z": 14
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-9",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 0.5800000000000001,
+            "z": 14
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-10",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 0.5800000000000001,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-11",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 0.5800000000000001,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-12",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 0.5800000000000001,
+            "z": 22
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-13",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 0.5800000000000001,
+            "z": 22
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-14",
+        "name": "rock",
+        "tags": [
+          "starter:rock"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 0.5800000000000001,
+            "z": 26
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "rock"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "maze-wall-0",
+        "name": "maze-wall-0",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 2,
+            "y": 1.9,
+            "z": 3
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 12,
+            "y": 3.8,
+            "z": 0.65
+          },
+          "color": "#9585C4"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 3.8,
+            "z": 0.65
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "maze-wall-1",
+        "name": "maze-wall-1",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -2,
+            "y": 1.9,
+            "z": 8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 12,
+            "y": 3.8,
+            "z": 0.65
+          },
+          "color": "#A494D5"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 3.8,
+            "z": 0.65
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "maze-wall-2",
+        "name": "maze-wall-2",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 2,
+            "y": 1.9,
+            "z": 13
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 12,
+            "y": 3.8,
+            "z": 0.65
+          },
+          "color": "#9585C4"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 12,
+            "y": 3.8,
+            "z": 0.65
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-0",
+        "name": "Treasure 1",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -5,
+            "y": 0.33000000000000007,
+            "z": 5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-1",
+        "name": "Treasure 2",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 5,
+            "y": 0.33000000000000007,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-2",
+        "name": "Treasure 3",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.33000000000000007,
+            "z": 16
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      }
+    ],
+    "assets": [
+      {
+        "id": "player",
+        "type": "model",
+        "url": "/models/starter/player.glb"
+      },
+      {
+        "id": "rock",
+        "type": "model",
+        "url": "/models/starter/rock.glb"
+      },
+      {
+        "id": "gem",
+        "type": "model",
+        "url": "/models/starter/gem.glb"
+      }
+    ],
+    "materials": [],
+    "prefabs": [],
+    "properties": {},
+    "settings": {
+      "background": "#C3BBE9",
+      "ambientIntensity": 0.65,
+      "sunIntensity": 0.8,
+      "shadows": true,
+      "resolutionScale": 1,
+      "maxDevicePixelRatio": 2,
+      "gravity": {
+        "x": 0,
+        "y": -9.81,
+        "z": 0
+      }
+    },
+    "cameras": {
+      "active": "follow",
+      "targetId": "player",
+      "target": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "offset": {
+        "x": 0,
+        "y": 9,
+        "z": -11
+      },
+      "fieldOfView": 60
+    },
+    "input": {
+      "forward": [
+        "KeyW",
+        "ArrowUp"
+      ],
+      "backward": [
+        "KeyS",
+        "ArrowDown"
+      ],
+      "left": [
+        "KeyA",
+        "ArrowLeft"
+      ],
+      "right": [
+        "KeyD",
+        "ArrowRight"
+      ],
+      "jump": [
+        "Space"
+      ],
+      "interact": [
+        "KeyE"
+      ],
+      "primary": [
+        "Mouse0"
+      ]
+    }
+  },
+  "script": {
+    "language": "python",
+    "source": "from bark import game\n\nplayer = game.entity(\"player\")\ngoals = [[-5,5],[5,10],[0,16]]\ncollected = set()\nfinished = False\n\n@game.on_input(\"jump\")\nasync def jump(state):\n    if state.pressed:\n        await player.jump()\n\n@game.on_start\nasync def adventure():\n    global finished\n    await game.set_hud(\"progress\", \"Treasures\", \"0 / 3\")\n    await game.notify(\"Find every treasure. Let curiosity lead!\", 4)\n    while True:\n        right = await game.input(\"right\")\n        left = await game.input(\"left\")\n        forward = await game.input(\"forward\")\n        backward = await game.input(\"backward\")\n        await player.walk(int(right.held) - int(left.held), int(forward.held) - int(backward.held))\n        position = await player.position()\n        if position.y < -8:\n            await player.respawn()\n        if not finished:\n            pass\n            for index, goal in enumerate(goals):\n                if index in collected:\n                    continue\n                if (position.x - goal[0]) ** 2 + (position.z - goal[1]) ** 2 < 1.5 ** 2 and -1 < position.y < 3:\n                    collected.add(index)\n                    await game.entity(\"goal-\" + str(index)).destroy()\n                    await game.set_hud(\"progress\", \"Treasures\", str(len(collected)) + \" / 3\")\n                    if len(collected) == len(goals):\n                        finished = True\n                        await game.set_hud(\"result\", \"Adventure\", \"Complete!\")\n                        await game.notify(\"You did it! Restart for another adventure.\", 12)\n                    else:\n                        await game.notify(\"Found one! Keep exploring.\", 2)\n        await game.next_frame()\n"
+  }
+}

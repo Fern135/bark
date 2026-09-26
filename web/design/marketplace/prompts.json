@@ -1,0 +1,45 @@
+{
+  "tool": "built-in imagegen",
+  "assets": [
+    {
+      "name": "concept",
+      "path": "C:\\Users\\hpaul\\.codex\\generated_images\\01a0de6a-0ac9-7892-8ca4-5e05f366a0a1\\exec-92cdec41-207a-4040-ac25-c1d8f5b71817.png",
+      "prompt": "Create a beautiful high fidelity desktop web UI concept for Bark's game marketplace. Reference images show the established UI style and the definitive Byte mascot. Use icy blue background, white panels with 24px corners, rounded navy Nunito typography, electric blue selection, lime green Play actions, tiny lilac accents. Byte MUST match the orange cartoon puppy with cream muzzle/paws, blue collar and white cursor-shaped pendant from character sheet, not the 3D B-pendant dog. Page header bark, Explore (active), Create, Log in, blue Join Bark. Compact wide pale mint hero: left eyebrow MADE BY IMAGINATION, headline Your next adventure starts here., subheading Little worlds. Big possibilities., green Surprise me button. Right illustration Byte exploring floating little islands with crystals and stars. Below hero search field Search games and category pills All games, Adventure, Platformer, Puzzle, Racing. Heading Pick a world. Press play. small Featured sort. Six gorgeous 16:10 illustrated game cards in 3-column 2-row grid with art, title, by Bark, tiny genre pill: Woodland Wander, Cloud Hop, Crystal Maze, Moon Bounce, Rainbow Rally, Garden Quest. Distinct themed covers. Spacious but game focused composition. Bottom small Byte and Made for the joy of playing. No metrics, commerce, prices, or fake social activity. Realistically implementable, exceptionally polished playful game browser. One single full webpage concept, crisp labels."
+    },
+    {
+      "name": "hero",
+      "path": "C:\\Users\\hpaul\\.codex\\generated_images\\01a0de6a-0ac9-7892-8ca4-5e05f366a0a1\\exec-b8eea17c-291d-4d74-adb2-3d4e89b99811.png",
+      "prompt": "Wide landscape illustration for a website banner, no text. Byte joyfully exploring floating grass islands, little trees, lavender crystals, golden stars and pale fluffy clouds. Byte and islands concentrated on right two thirds, left third soft empty pale mint sky. Icy blue and mint background. Polished friendly storybook game illustration, soft dimensional environments, character faithful to reference. Wide 3:2 composition. Byte is the orange cartoon puppy from supplied character sheet, cream muzzle chest paws and tail tip, navy eyes, blue collar, white cursor-shaped pendant. No B emblem, no lettering, no UI, no watermark."
+    },
+    {
+      "name": "woodland-wander",
+      "path": "C:\\Users\\hpaul\\.codex\\generated_images\\01a0de6a-0ac9-7892-8ca4-5e05f366a0a1\\exec-52371a42-025f-482b-b7c1-e6946bda5103.png",
+      "prompt": "Landscape 3:2 game cover illustration, no text. Byte running across a small wooden bridge through a sunlit magical woodland, ferns, mossy rocks, bright gold collectible gems along the trail. Rich green foliage, honey light, delightful adventure. Faithful cartoon Byte in softly dimensional environment. Byte is the orange cartoon puppy from supplied character sheet, cream muzzle chest paws and tail tip, navy eyes, blue collar, white cursor-shaped pendant. No B emblem, no lettering, no UI, no watermark."
+    },
+    {
+      "name": "cloud-hop",
+      "path": "C:\\Users\\hpaul\\.codex\\generated_images\\01a0de6a-0ac9-7892-8ca4-5e05f366a0a1\\exec-beeb3212-b44d-4ab6-bb61-fdf2b0fdd127.png",
+      "prompt": "Landscape 3:2 game cover illustration, no text. Byte jumping across floating grassy platforms above fluffy clouds, golden stars marking a path, bright sky blue and peach and mint, joyful sense of height. Faithful cartoon Byte in softly dimensional environment. Byte is the orange cartoon puppy from supplied character sheet, cream muzzle chest paws and tail tip, navy eyes, blue collar, white cursor-shaped pendant. No B emblem, no lettering, no UI, no watermark."
+    },
+    {
+      "name": "crystal-maze",
+      "path": "C:\\Users\\hpaul\\.codex\\generated_images\\01a0de6a-0ac9-7892-8ca4-5e05f366a0a1\\exec-6089506d-628f-45cd-9f00-b7046e3dbe5b.png",
+      "prompt": "Landscape 3:2 premium game cover illustration, no text or UI. Byte exploring a winding maze of violet crystal walls in a magical navy blue cave, luminous cyan paths and purple gems, mysterious but friendly. Faithful Byte from supplied reference: orange cartoon puppy, cream markings, navy eyes, blue collar, white cursor pendant. Soft dimensional storybook environment, vivid harmonious colors, beautiful light and composition. No B emblem, no lettering, no watermark."
+    },
+    {
+      "name": "moon-bounce",
+      "path": "C:\\Users\\hpaul\\.codex\\generated_images\\01a0de6a-0ac9-7892-8ca4-5e05f366a0a1\\exec-9d7de395-8d75-422a-98a9-4e58bb3c0252.png",
+      "prompt": "Landscape 3:2 premium game cover illustration, no text or UI. Byte in a clear round astronaut helmet hopping between lavender moon rocks, starry navy space and a big pastel blue planet, playful cosmic adventure. Faithful Byte from supplied reference: orange cartoon puppy, cream markings, navy eyes, blue collar, white cursor pendant. Soft dimensional storybook environment, vivid harmonious colors, beautiful light and composition. No B emblem, no lettering, no watermark."
+    },
+    {
+      "name": "rainbow-rally",
+      "path": "C:\\Users\\hpaul\\.codex\\generated_images\\01a0de6a-0ac9-7892-8ca4-5e05f366a0a1\\exec-54ece7c6-6102-46b7-8cde-9f41c5674ba7.png",
+      "prompt": "Landscape 3:2 premium game cover illustration, no text or UI. Byte running fast along a rainbow-colored track with striped checkpoint gates and colorful flags on little islands, dynamic racing composition, no vehicles. Faithful Byte from supplied reference: orange cartoon puppy, cream markings, navy eyes, blue collar, white cursor pendant. Soft dimensional storybook environment, vivid harmonious colors, beautiful light and composition. No B emblem, no lettering, no watermark."
+    },
+    {
+      "name": "garden-quest",
+      "path": "C:\\Users\\hpaul\\.codex\\generated_images\\01a0de6a-0ac9-7892-8ca4-5e05f366a0a1\\exec-aa70bee7-8f20-4ce0-b08e-a20730422a54.png",
+      "prompt": "Landscape 3:2 premium game cover illustration, no text or UI. Byte discovering golden treasures in a lush whimsical garden, enormous daisies, sunflowers, pink blossoms and leafy hedges, warm sunshine. Faithful Byte from supplied reference: orange cartoon puppy, cream markings, navy eyes, blue collar, white cursor pendant. Soft dimensional storybook environment, vivid harmonious colors, beautiful light and composition. No B emblem, no lettering, no watermark."
+    }
+  ]
+}
