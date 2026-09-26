@@ -9,8 +9,14 @@ import { games, genres } from "./catalog";
 import { GameCard } from "./game-card";
 import { MarketFooter, MarketHeader } from "./shell";
 import s from "./marketplace.module.css";
+import Community, { CollectionTabs } from "./community";
 
 export default function Marketplace() {
+  const params = useSearchParams();
+  return params.get("source") === "demos" ? <DemoMarketplace /> : <Community />;
+}
+
+function DemoMarketplace() {
   const params = useSearchParams();
   const router = useRouter();
   const query = params.get("q") ?? "";
@@ -118,6 +124,7 @@ export default function Marketplace() {
           className={s.collection}
           aria-labelledby="collection-title"
         >
+          <CollectionTabs demos />
           <div className={s.filters}>
             <label className={s.search}>
               <Icon name="search" />
@@ -208,7 +215,7 @@ export default function Marketplace() {
               <p>Try a different word or give another category a go.</p>
               <Button
                 variant="outline"
-                onClick={() => window.history.replaceState(null, "", "/games")}
+                onClick={() => window.history.replaceState(null, "", "/games?source=demos")}
               >
                 Show all games
               </Button>

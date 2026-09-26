@@ -16,14 +16,17 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include 
+from .health import ready
 
 
 api_urls = [
+    path("marketplace/", include("marketplace.urls")),
     path("auth/", include("authenticator.urls")), # api/auth/
     path("canvas/", include("canvas.urls")),      # api/canvas/
 ]
 
 urlpatterns = [
+    path('health/ready/', ready),
     path('admin/', admin.site.urls),
     path("api/", include(api_urls))
 ]

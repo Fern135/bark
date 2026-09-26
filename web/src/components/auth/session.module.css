@@ -1,0 +1,2 @@
+.name { display: inline-block; max-width: 130px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 600px) { .name { display: none; } }

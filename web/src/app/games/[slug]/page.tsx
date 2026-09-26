@@ -9,16 +9,25 @@ import { GameCard } from "@/components/marketplace/game-card";
 import { GameCanvas } from "@/components/marketplace/player";
 import { MarketFooter, MarketHeader } from "@/components/marketplace/shell";
 import s from "@/components/marketplace/marketplace.module.css";
+import { cache } from "react";
+import axios from "axios";
+import { marketplaceApi } from "@/lib/marketplace";
+import { CommunityGame, CommunityUnavailable } from "@/components/marketplace/community-game";
 
-export function generateStaticParams() {
-  return games.map(({ slug }) => ({ slug }));
-}
+export const dynamic = "force-dynamic";
+const isPublicId = (slug: string) => /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(slug);
+const publicGame = cache((id: string) => marketplaceApi.get(id));
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
-  const game = findGame((await params).slug);
+  const slug = (await params).slug;
+  if (isPublicId(slug)) {
+    const game = await publicGame(slug).catch(() => null);
+    return { title: game ? `${game.name} — Play on Bark` : "Play a community world — Bark" };
+  }
+  const game = findGame(slug);
   return {
     title: game ? `${game.title} — Play on Bark` : "World not found — Bark",
     description: game?.description,
@@ -29,7 +38,17 @@ export default async function GamePage({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const game = findGame((await params).slug);
+  const slug = (await params).slug;
+  if (isPublicId(slug)) {
+    let game;
+    try { game = await publicGame(slug); }
+    catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) notFound();
+      return <CommunityUnavailable />;
+    }
+    return <CommunityGame game={game} />;
+  }
+  const game = findGame(slug);
   if (!game) notFound();
   const related = games
     .filter((entry) => entry.slug !== game.slug)
@@ -44,7 +63,7 @@ export default async function GamePage({
       <div className={s.page}>
         <MarketHeader />
         <main>
-          <Link href="/games" className={s.breadcrumb}>
+          <Link href="/games?source=demos" className={s.breadcrumb}>
             <Icon name="arrow" size={16} />
             Back to exploring
           </Link>
@@ -101,9 +120,9 @@ export default async function GamePage({
                 <Icon name="arrow" size={16} />
               </Link>
               <small>
-                Your changes stay in your session.
+                Sign in to autosave your changes to My Games.
                 <br />
-                Export your world to keep it.
+                You can also export your world as JSON.
               </small>
               <figure className={s.screenshot}>
                 <Image

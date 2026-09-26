@@ -1,5 +1,8 @@
 # bark
 
+**Production hosting:** [Oracle Always Free deployment](deploy/README.md) covers the
+separate HTTPS Compose stack, release tooling, private backups, recovery and checks.
+
 **API reference:** [API.md](API.md) lists every endpoint, its body, and whether it needs a JWT.
 
 | Directory | What it is | Port (internal only) |
@@ -173,7 +176,74 @@ The build checks TypeScript and generates `.next/standalone/server.js` for the
 production Docker image. The Dockerfile also copies the static assets needed by
 that server.
 
-### Integration helpers
+### Accounts and saved worlds
+
+Email/password signup and login use Django's HttpOnly session cookie. Signup logs in
+automatically. Recovery pages support password and username reminders; when `DEMO_EMAIL=1`,
+they show the demo inbox instead of sending real email. Google sign-in is hidden.
+
+`/games` is the public community collection; `/games?source=demos` retains the six Bark demos.
+`/my-games` lists the current account's saved
+worlds, with edit, play, rename and delete controls. Saved games open at `/editor?id=<uuid>`
+and play at `/my-games/<uuid>`. Guests can use `/editor` and export JSON without an account.
+The editor's sign-in action preserves the guest draft and returns to it after authentication.
+
+Authenticated edits autosave after 1.5 seconds of inactivity. Save status is separate from
+playback and exporting a file does not mark cloud changes saved. IndexedDB keeps local
+recovery drafts per account/project; restore prompts appear for unsaved work. Changing
+accounts never transfers another account's draft. Conflict actions reload the saved version
+or save local work as a new copy. Offline/server failures retry with backoff; validation
+errors require correction and Retry save. Keep the tab open or export JSON if local storage
+is unavailable. Whole-document saves retain the API's 10 MB request limit.
+
+Run the real integration suite against the running Docker gateway (demo email enabled):
+
+```bash
+cd web
+npm run test:integration
+```
+
+`BARK_INTEGRATION_URL` overrides the default `http://localhost:8080`;
+`BARK_BROWSER_CHANNEL` selects a browser (defaults to installed Chrome). Tests create unique
+test accounts and worlds, so use a development database. The suite exercises real cookies,
+CSRF, guest-draft adoption, autosave, reopen/play, conflicts, recovery and account expiry.
+The ordinary Playwright suite remains standalone and excludes integration tests.
+
+For backend checks without Docker, install `server/requirements.txt` in an isolated Python
+environment and run:
+
+```bash
+python server/manage.py test canvas authenticator --settings=server.test_settings --noinput
+```
+
+This opt-in configuration uses SQLite and an
+in-memory cache; it does **not** prove PostgreSQL row locking or Redis behavior. The normal
+Docker test command remains the production-stack validation path. No schema migration is
+needed for this integration.
+
+### Publishing games
+
+Owners publish directly from the editor or My Games. Publishing waits for cloud saves;
+afterward every successful save is public, including collaborator edits. Only the owner
+can change visibility. Public links at `/games/<uuid>` work without an account. Unpublish
+removes discovery and prevents new downloads; already-open play sessions continue.
+Community games have no remix action. Covers are best-effort snapshots captured without
+executing Python, with Bark artwork as the fallback.
+
+Community playback uses an opaque-origin `sandbox="allow-scripts"` iframe, a dedicated
+static player bundle, and a blob worker that inherits the frame's restrictive CSP.
+The frame receives only the public game over a MessageChannel; its allowed network paths
+are static runtime files and artwork, never `/api` or `/ws`. Runtime files have anonymous
+CORS headers. Editor saves embed model/texture assets using `serializeGame`; documents
+submitted directly to the API must also embed their assets to play in this frame.
+
+`npm run prepare:editor` builds the public player under the ignored
+`web/public/community-runtime/` directory. Docker builds run this automatically, and
+server startup applies the new marketplace migration. No separate runtime service is needed.
+Run focused integration coverage with `npm run test:integration -- tests/integration/publishing.spec.ts`.
+Design references and the generated publishing concept are in `web/design/publishing/`.
+
+### API clients
 
 - `src/lib/api.ts` is the shared axios instance. In the browser it calls `/api` (same origin).
   During SSR it calls `http://server:8000/api` over the internal network. It already sends
@@ -316,3 +386,34 @@ git tag -a v1.0.0 -m "v1.0.0" && git push origin v1.0.0
 git clean -fdn                             # preview removing untracked files (-f to actually do it)
 git blame <file>                           # who changed each line
 ```
+# Collaborative workspaces
+
+Open a saved game and choose **Collaborators → Invite collaborators**. The first
+invite switches that game to live editing. Owners manage reusable codes, members,
+name, and deletion; invitees are editors. Redeem codes at `/join`; joined games
+appear under **My Games → Shared with me**. Resetting/disabling a code does not
+remove existing members.
+
+Live editing uses Canvas persistence through the websocket service. Different
+objects and block stacks can be edited concurrently; locks protect the same
+object, script, or world section. Python has one active editor. Disconnection
+pauses shared changes and preserves pending work locally. Play sessions remain
+local and never broadcast runtime state.
+
+Apply `python manage.py migrate` in `server` before starting websocket workers.
+The ws Docker build now uses the repository root and includes Django's shared
+transaction code. Keep PostgreSQL/JWT settings identical between services and
+configure Redis for multiple workers. Legacy standalone collaboration tables are
+left untouched; websocket startup no longer owns migrations.
+
+Validation: Django `canvas.test_collaboration`, pytest `ws/tests`, and
+`npm --prefix web run test:integration -- collaboration.spec.ts`. Browser tests
+default to the Docker gateway; `BARK_INTEGRATION_URL` overrides the URL and
+`BARK_TEST_OUTPUT` isolates test artifacts. Use PostgreSQL and multiple websocket
+workers with Redis for concurrency proof; SQLite/LocalBus is development only.
+
+For a gateway run with two socket instances: `docker compose up -d --build --scale ws=2`.
+Then run `npm --prefix web run test:integration -- collaboration.spec.ts`. The
+proxy balances socket connections across the instances; Redis distributes edits.
+On Windows, Docker Desktop requires Virtual Machine Platform and virtualization
+to be enabled. An unavailable Linux engine leaves this validation unverified.

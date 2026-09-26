@@ -11,7 +11,8 @@
     "predev": "npm run prepare:editor",
     "prebuild": "npm run prepare:editor",
     "test:editor": "node ../engine/test/fixtures/create-fixtures.mjs && playwright test",
-    "test:marketplace": "playwright test tests/marketplace.spec.ts tests/marketplace-lifecycle.spec.ts"
+    "test:marketplace": "playwright test tests/marketplace.spec.ts tests/marketplace-lifecycle.spec.ts",
+    "test:integration": "playwright test --config playwright.integration.config.ts"
   },
   "dependencies": {
     "@bark/engine": "file:../engine",

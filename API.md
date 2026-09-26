@@ -205,6 +205,23 @@ may change (Postgres `jsonb`); JSON treats key order as meaningless.
 **`revision`:** every write returns the game's new `revision`, which goes up by 1 on each
 change. Compare it with the one you loaded to notice changes from another tab.
 
+The frontend autosaves whole documents after 1.5 seconds without edits. It sends
+`If-Match: "<revision>"` on game-detail PUT, PATCH and DELETE. The optional header is
+checked atomically under the game row lock; a stale value returns **412** with
+`{"error": "This game changed in another tab.", "revision": <current>}` without writing.
+A malformed header returns 400. Clients omitting it retain the previous behavior.
+Section/entity/library endpoints retain their existing contracts.
+
+Creation also accepts an optional `id` UUID. Retrying POST with the same UUID and owner
+returns the existing game with 200 without changing it; first creation returns 201.
+An id owned by another user returns a generic 409 without revealing any game data.
+The frontend keeps the first creation payload until acknowledged, so a lost response
+cannot create duplicate games or silently discard edits made while the request was pending.
+Autosave also sends `X-Bark-Owner: <user_id>` on creation and whole-document writes.
+If another tab has changed the login cookie to a different account, the server returns
+401 instead of saving the previous account's draft into the new account. This header is
+an identity precondition, not authentication; the JWT still supplies authorization.
+
 | Method | URL | Body | Success |
 | --- | --- | --- | --- |
 | GET | `/api/canvas/games/` | | 200 `{"games": [summary, ...]}` newest first |
@@ -337,3 +354,42 @@ All in `.env` (see `.env.example`):
 | `LOGIN_MAX_FAILURES` | `5` | Failed logins before an account is locked |
 | `LOGIN_LOCKOUT_MINUTES` | `15` | How long the lock lasts |
 | `CANVAS_REQUESTS_PER_MINUTE` | `300` | Canvas requests per user per minute |
+# Public marketplace
+
+Saved-game summaries include `publication: {is_public}` for owners and collaborators.
+All existing games start private. Publication does not increment the document revision.
+
+| Endpoint | Access and behavior |
+| --- | --- |
+| `GET /api/marketplace/games/?q=&page=1` | Anonymous. Searches game/creator names, newest first publication first, 24 per page. Returns `{games, count, page, has_more}`; list rows contain metadata only. |
+| `GET /api/marketplace/games/<id>/` | Anonymous. Latest coherent saved document and public metadata; 404 for private, unpublished, or deleted games. |
+| `GET /api/marketplace/games/<id>/publication/` | Owner only. Returns `{id, is_public, published_at}`. |
+| `PUT /api/marketplace/games/<id>/publication/` | Owner only, CSRF protected. Body `{is_public: boolean}`; optional `X-Bark-Owner` guards account switches. Idempotent; first publication date survives unpublish/republish. |
+| `GET /api/marketplace/games/<id>/cover/` | Anonymous only while public; PNG or 404. |
+| `PUT /api/marketplace/games/<id>/cover/` | Owner only, CSRF protected. `{revision, png}` with base64 PNG (maximum 400 KB, 800×600). Returns 409 if unpublished or document revision changed; never changes visibility. |
+
+Public responses use `no-store`. Metadata includes `id`, `name`, `creator` (username),
+`revision`, `published_at`, `updated_at`, and `cover_url`; no email or member roster.
+Publishing controls are limited to 60 requests per minute per account. Unpublishing
+blocks future reads; a game already downloaded into a player remains playable.
+
+# Shared workspaces
+
+Each saved Canvas game has one owner. Game summaries/details additionally return
+`owner: {user, name}`, `role: "owner" | "editor"`, and `collaboration: boolean`.
+The game list includes owned games and invited memberships. Unrelated accounts
+receive 404; a game UUID is not an invitation.
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /api/canvas/games/<id>/workspace/` | Roster and activation state; current invite code is returned only to the owner. |
+| `POST /api/canvas/games/<id>/workspace/` | Owner activates collaboration or resets the reusable code. First activation requires current `If-Match`. |
+| `DELETE /api/canvas/games/<id>/workspace/` | Owner disables invitations; existing memberships remain. |
+| `POST /api/canvas/workspaces/join/` | Signed-in user explicitly redeems `{code}`; repeated joins are idempotent. Limited to 20 attempts/minute/account. |
+| `DELETE /api/canvas/games/<id>/members/<user>/` | Owner removes an editor, or an editor leaves. The owner cannot be removed. |
+
+Shared content is saved through protocol v2 at `/ws/`; old HTTP content writes
+return 409 with instructions to reconnect. Rename/delete remain owner-only HTTP
+actions and are reconciled by active rooms. Imported replacements by editors
+retain the workspace name. Real-time acknowledgments use the same Canvas
+revision as HTTP reads. See [the workspace protocol](ws/WORKSPACE-PROTOCOL.md).

@@ -27,6 +27,8 @@ class Config:
     # ---- Django ----
     SECRET_KEY = _required('DJANGO_SECRET_KEY')
     DEBUG = _bool('DJANGO_DEBUG')
+    TRUST_PROXY = _bool('DJANGO_TRUST_PROXY')
+    SECURE_COOKIES = _bool('DJANGO_SECURE_COOKIES')
     ALLOWED_HOSTS = _list('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1')
     CSRF_TRUSTED_ORIGINS = _list('DJANGO_CSRF_TRUSTED_ORIGINS', 'http://localhost:8080')
     # Browser origins allowed to call /api/ cross-origin (the web frontend). Same-origin calls
@@ -48,6 +50,7 @@ class Config:
             'PORT': os.environ.get('POSTGRES_PORT', '5432'),
             'CONN_MAX_AGE': 60,
             'CONN_HEALTH_CHECKS': True,
+            'OPTIONS': {'connect_timeout': 3},
         }
     }
 
@@ -83,6 +86,7 @@ class Config:
     # Base URL of the Next.js site, used to build the reset link in emails.
     FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:8080').rstrip('/')
     PASSWORD_RESET_MINUTES = int(os.environ.get('PASSWORD_RESET_MINUTES', '60'))
+    ACCOUNT_RECOVERY_ENABLED = _bool('ACCOUNT_RECOVERY_ENABLED', '1')
 
     # ---- Email ----
     # Demo mode: emails are saved to the database and shown by GET /api/auth/demo-inbox/

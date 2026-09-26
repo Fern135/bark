@@ -16,11 +16,15 @@ Browser usage (web/src/lib/api.ts already sends the cookie and CSRF header):
 from django.urls import path
 
 from . import views
+from . import workspace_views
 
 SECTIONS = ("settings", "cameras", "input", "properties", "script")
 LIBRARIES = ("assets", "materials", "prefabs")
 
 urlpatterns = [
+    path("workspaces/join/", workspace_views.join),
+    path("games/<uuid:game_id>/workspace/", workspace_views.workspace),
+    path("games/<uuid:game_id>/members/<str:user_id>/", workspace_views.member),
     path("games/",                                  views.games,       name="games"),        # GET list, POST create
     path("games/<uuid:game_id>/",                   views.game_detail, name="game"),         # GET, PUT document, PATCH name, DELETE
     path("games/<uuid:game_id>/entities/",          views.entities,    name="entities"),     # GET list, POST add

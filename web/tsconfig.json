@@ -40,7 +40,9 @@
     ".cache/editor-reference-build/types/**/*.ts",
     ".cache/editor-reference-build/dev/types/**/*.ts",
     ".cache/editor-reference-dev/types/**/*.ts",
-    ".cache/editor-reference-dev/dev/types/**/*.ts"
+    ".cache/editor-reference-dev/dev/types/**/*.ts",
+    ".cache/collaboration-build/types/**/*.ts",
+    ".cache/collaboration-build/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

@@ -16,3 +16,20 @@ export const api = axios.create({
   xsrfHeaderName: "X-CSRFToken",
   headers: { Accept: "application/json" },
 });
+
+let csrf: Promise<unknown> | undefined;
+api.interceptors.request.use(async (config) => {
+  if (typeof document !== "undefined" && !["get", "head", "options"].includes(config.method ?? "get")) {
+    if (!document.cookie.split(";").some((cookie) => cookie.trim().startsWith("csrftoken="))) {
+      csrf ??= api.get("/auth/csrf/").finally(() => { csrf = undefined; });
+      await csrf;
+    }
+  }
+  return config;
+});
+api.interceptors.response.use((response) => response, (error) => {
+  if (typeof window !== "undefined" && error.response?.status === 401 && error.config?.url?.startsWith("/canvas/")) {
+    window.dispatchEvent(new Event("bark:session-expired"));
+  }
+  return Promise.reject(error);
+});

@@ -3,6 +3,7 @@
 **/dist
 **/dist-playground
 **/.venv
+**/.cache
 **/__pycache__
 **/test-results
 **/playwright-report
@@ -10,6 +11,7 @@
 **/.env.*
 .git
 web/public/runtime
+web/public/community-runtime
 web/public/pyodide
 web/public/havok
 web/public/scripting

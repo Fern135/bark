@@ -102,7 +102,7 @@ test("edit, gallery, GLB upload, export/import and invalid import preserve autho
     "A little adventure",
   );
   await importGame(page, saved);
-  await expect(page.getByText("File saved locally")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Sign in to save" })).toBeVisible();
   expect(await exportGame(page)).toEqual(saved);
   await page.getByRole("button", { name: "Viewport", exact: true }).click();
   await page.getByRole("button", { name: "Moon rock", exact: true }).click();

@@ -26,6 +26,9 @@ SECRET_KEY = Config.SECRET_KEY
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = Config.DEBUG
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https') if Config.TRUST_PROXY else None
+SESSION_COOKIE_SECURE = Config.SECURE_COOKIES
+CSRF_COOKIE_SECURE = Config.SECURE_COOKIES
 
 # Public hostnames plus `server`, the name web (SSR) and ws use on the internal Docker network.
 ALLOWED_HOSTS = [*Config.ALLOWED_HOSTS, *Config.INTERNAL_HOSTS]
@@ -51,6 +54,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'authenticator',
     'canvas',
+    'marketplace',
 ]
 
 MIDDLEWARE = [
@@ -114,7 +118,8 @@ LOGIN_LOCKOUT_MINUTES = Config.LOGIN_LOCKOUT_MINUTES
 
 CACHES = {
     'default': (
-        {'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': Config.CACHE_URL}
+        {'BACKEND': 'django.core.cache.backends.redis.RedisCache', 'LOCATION': Config.CACHE_URL,
+         'OPTIONS': {'socket_connect_timeout': 3, 'socket_timeout': 3}}
         if Config.CACHE_URL
         else {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'}
     )
@@ -133,6 +138,7 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 
 FRONTEND_URL = Config.FRONTEND_URL
 PASSWORD_RESET_MINUTES = Config.PASSWORD_RESET_MINUTES
+ACCOUNT_RECOVERY_ENABLED = Config.ACCOUNT_RECOVERY_ENABLED
 
 
 # Email
@@ -182,7 +188,8 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

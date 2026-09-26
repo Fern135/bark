@@ -70,6 +70,8 @@ class Game(models.Model):
     # Bumped on every change to the game or any of its sections. Clients can compare it to
     # notice that someone (or another tab) changed the game since they loaded it.
     revision = models.PositiveIntegerField(default=0)
+    collaboration = models.BooleanField(default=False)
+    invite_code = models.CharField(max_length=48, null=True, blank=True, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -83,6 +85,42 @@ class Game(models.Model):
         """Record that the game changed: revision + 1 and a new updated_at."""
         Game.objects.filter(pk=self.pk).update(revision=F("revision") + 1, updated_at=timezone.now())
         self.refresh_from_db(fields=["revision", "updated_at"])
+
+
+class WorkspaceMember(models.Model):
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="members")
+    user = models.ForeignKey(User, to_field="user_id", on_delete=models.CASCADE)
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["game", "user"], name="workspace_member_unique")]
+
+
+class WorkspaceOperation(models.Model):
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="operations")
+    revision = models.PositiveIntegerField()
+    commit_id = models.UUIDField()
+    user_id = models.CharField(max_length=132)
+    connection = models.UUIDField()
+    ops = models.JSONField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["game", "revision"], name="workspace_revision_unique"),
+            models.UniqueConstraint(fields=["game", "commit_id"], name="workspace_commit_unique"),
+        ]
+
+
+class WorkspaceLock(models.Model):
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="locks")
+    resource = models.CharField(max_length=256)
+    user_id = models.CharField(max_length=132)
+    connection = models.UUIDField()
+    expires_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["game", "resource"], name="workspace_lock_unique")]
 
 
 class GameSection(models.Model):

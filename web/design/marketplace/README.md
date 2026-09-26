@@ -1,6 +1,9 @@
 # Bark game collection
 
-`/games` is the game discovery frontend. `/games/[slug]` plays a bundled JSON game in Bark's engine. **Open in editor** loads that same JSON through `/editor?game=<slug>`.
+`/games` now opens community discovery; the original collection described below is at
+`/games?source=demos`. `/games/[slug]` still plays bundled demos, while UUID paths play
+public saved games. **Open in editor** remains available for bundled demos only.
+See [publishing](../publishing/README.md) for the public publishing flow and isolated player.
 
 ## Visual sources
 

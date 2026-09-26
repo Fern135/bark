@@ -1,0 +1,29 @@
+.hero { display:flex; align-items:center; gap:30px; padding:35px 0 45px; }
+.hero>div { flex:1; min-width:0; }
+.hero>img { width:48%; height:auto; border-radius:40px; }
+.hero h1 { font-size:clamp(34px,4.2vw,62px); font-weight:950; line-height:1.08; letter-spacing:-2px; margin:15px 0 20px; }
+.hero h1 span { color:#8351d7; }
+.hero p { color:#647295; }
+.hero .create { display:inline-block; background:#e9f6e4; padding:13px 18px; border-radius:15px; color:#275c28; font-weight:800; margin-top:8px; }
+.tabs { display:flex; gap:8px; border-bottom:1px solid #e4e9f4; margin:10px 0 30px; padding-bottom:12px; }
+.tabs a { padding:11px 22px; border-radius:14px; font-weight:800; }
+.tabs a[aria-current] { background:#eaf2ff; color:#0879f4; }
+.heading,.detailHeading { display:flex; justify-content:space-between; align-items:center; gap:25px; margin-bottom:25px; }
+.heading h2 { font-size:28px; font-weight:900; }
+.heading label { width:min(400px,100%); min-height:49px; flex:0 0 auto; }
+.collection { min-height:360px; }
+.empty { padding:60px 15px; text-align:center; }
+.empty h3 { font-weight:900; margin:16px 0 10px; }
+.empty a { display:inline-block; padding:12px 18px; border-radius:12px; background:#eef4ff; font-weight:800; }
+.paging { display:flex; align-items:center; justify-content:center; gap:20px; padding:25px; }
+.detailHeading h1 { font-weight:950; overflow-wrap:anywhere; }
+.playerContainer { container-type:inline-size; }
+.player { width:100%; height:calc(62.5cqw + 65px); min-height:320px; border:1px solid #e3eafa; border-radius:22px; background:#f0f5ff; }
+@container (max-width:600px) { .player { height:calc(80cqw + 75px); } }
+.instructions { padding:30px 0; }
+.instructions h2 { font-weight:850; }
+.instructions p { color:#657195; }
+.bindings { display:flex; flex-wrap:wrap; gap:16px; margin:20px 0; }
+.bindings>div { display:flex; gap:14px; padding:12px 16px; border-radius:14px; background:#f0f5ff; align-items:center; }
+.bindings span { text-transform:capitalize; font-weight:750; }
+@media(max-width:700px) { .hero { padding-top:15px; flex-direction:column; gap:15px; align-items:stretch; }.hero>img { width:100%; max-height:230px; object-fit:cover; }.hero h1 { letter-spacing:-1px; }.heading,.detailHeading { align-items:stretch; flex-direction:column; gap:10px; }.tabs a { padding:10px 17px; } }

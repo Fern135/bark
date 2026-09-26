@@ -28,9 +28,9 @@
   text-decoration: none; line-height: 1; letter-spacing: -3px;
 }
 .brand svg { width: 25px; height: 28px; margin: -6px 0 0 3px; fill: none; stroke: #00ac72; stroke-width: 3; stroke-linecap: round; }
-.projectName { display: flex; align-items: center; gap: 18px; min-width: 0; flex: 1; }
+.projectName { display: flex; align-items: center; gap: 18px; min-width: 0; flex: 1 1 380px; }
 .projectName input {
-  width: 225px; max-width: 100%; padding: 7px 5px;
+  width: 225px; min-width: 0; max-width: 100%; flex: 1; padding: 7px 5px;
   background: transparent; border: 1px solid transparent; border-radius: 9px;
   font: inherit; font-size: 24px; font-weight: 800; color: inherit;
 }
@@ -708,3 +708,4 @@
   .viewportProperties { display: none; }
   .workspace[data-view="viewport"] { display: block; }
 }
+.persistenceNotice { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 10px 20px; background: #fff1c9; color: #453811; font-size: 14px; }

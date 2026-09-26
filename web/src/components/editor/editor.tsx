@@ -8,16 +8,19 @@ import * as Popover from "@radix-ui/react-popover";
 import { motion, MotionConfig } from "motion/react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { Collaborators } from "./collaborators";
 import { BlocksEditor, PythonEditor } from "./code-editors";
 import { ScenePanel } from "./scene-panel";
 import { Inspector } from "./inspector";
 import { AddObject } from "./add-object";
 import { ModelStudio } from "./model-studio";
-import { CollaboratorPreview } from "./collaborator-preview";
+import type { SaveSeed } from "@/lib/autosave";
 import { renderThumbnails } from "./thumbnails";
 import { useEditor } from "./use-editor";
 import { TransformToolbar } from "./transform-toolbar";
 import { nunito } from "@/lib/fonts";
+import { PublishControl } from "@/components/marketplace/publish-control";
+import { gamesApi } from "@/lib/games";
 import type { Game } from "./use-editor";
 import s from "./editor.module.css";
 
@@ -25,15 +28,21 @@ type Tab = "code" | "design" | "viewport";
 export default function Editor({
   initialGame,
   catalogSlug,
+  saveSeed,
+  recoveryWarning,
+  frameStarter,
 }: {
-  initialGame?: Game;
+  initialGame: Game;
   catalogSlug?: string;
+  saveSeed: SaveSeed;
+  recoveryWarning?: string;
+  frameStarter?: boolean;
 }) {
   const {
     canvas: canvasRef,
     session: sessionRef,
     ...editor
-  } = useEditor(initialGame);
+  } = useEditor(initialGame, saveSeed, frameStarter);
   const [tab, setTab] = useState<Tab>("viewport");
   const [adding, setAdding] = useState(false);
   const [replacing, setReplacing] = useState(false);
@@ -119,15 +128,7 @@ export default function Editor({
           className={s.brand}
           style={{ fontFamily: nunito.style.fontFamily }}
           aria-label="Bark home"
-          onClick={(event) => {
-            if (
-              editor.dirty &&
-              !window.confirm(
-                "Leave the editor? Export JSON first to keep your changes.",
-              )
-            )
-              event.preventDefault();
-          }}
+          onNavigate={(event) => void editor.cloud.leave(event, "/")}
         >
           bark
           <svg aria-hidden="true" viewBox="0 0 24 28">
@@ -138,32 +139,23 @@ export default function Editor({
           <input
             aria-label="Project name"
             value={editor.game.project.name}
-            disabled={editor.lock}
+            disabled={editor.lock || editor.role !== "owner"}
             maxLength={80}
             onChange={(event) => editor.rename(event.target.value)}
           />
           <span className={s.saveState}>
             <SaveIcon saved={!editor.dirty} />
-            {editor.busy
-              ? "Working…"
-              : editor.dirty
-                ? "Unsaved"
-                : editor.savedLabel}
+            <span role="status">{editor.cloud.message}</span>
           </span>
         </div>
         <div className={s.headerActions}>
+          <div className={s.collaborators}><Collaborators editor={editor}/></div>
+          <Link href="/my-games" onNavigate={(event) => void editor.cloud.leave(event, "/my-games")}>My Games</Link>
+          {["guest", "session"].includes(editor.cloud.status) && <Button size="small" onClick={() => void editor.cloud.signIn()}>Sign in to save</Button>}
           {catalogSlug && (
             <Link
               href={`/games/${catalogSlug}`}
-              onClick={(event) => {
-                if (
-                  editor.dirty &&
-                  !window.confirm(
-                    "Leave the editor? Export JSON first to keep your changes.",
-                  )
-                )
-                  event.preventDefault();
-              }}
+              onNavigate={(event) => void editor.cloud.leave(event, `/games/${catalogSlug}`)}
             >
               Back to game
             </Link>
@@ -181,8 +173,8 @@ export default function Editor({
             variant="outline"
             size="small"
             className={s.exportButton}
-            disabled={editor.lock}
-            onClick={() => void editor.save()}
+            disabled={!editor.ready || editor.busy}
+            onClick={() => void editor.exportFile()}
             leadingIcon={<Icon name="upload" size={22} />}
           >
             Export JSON
@@ -226,7 +218,12 @@ export default function Editor({
               Play
             </Button>
           )}
-          <CollaboratorPreview />
+        <PublishControl key={editor.cloud.gameId} id={editor.cloud.gameId} title={editor.game.project.name} role={saveSeed.role} published={editor.cloud.gameId === saveSeed.id && saveSeed.publication?.is_public} disabled={!editor.ready || editor.busy || playing} signIn={editor.cloud.signIn} beforePublish={async () => {
+          if (!(await editor.cloud.flush())) return;
+          const identity = editor.cloud.identity();
+          if (!identity) return;
+          return gamesApi.get(identity.id);
+        }} />
         </div>
         <input
           ref={file}
@@ -241,6 +238,12 @@ export default function Editor({
           }}
         />
       </header>
+      {(editor.cloud.localError || recoveryWarning || ["error", "offline", "conflict", "session"].includes(editor.cloud.status)) && <div className={s.persistenceNotice} role="alert">
+        <span>{editor.cloud.localError || recoveryWarning || editor.cloud.message}</span>
+        {editor.cloud.message.includes("live editing") && !editor.shared && <Button size="small" onClick={() => location.reload()}>Connect to workspace</Button>}
+        {["error", "offline"].includes(editor.cloud.status) && <Button size="small" onClick={editor.cloud.retry}>Retry save</Button>}
+        {editor.cloud.status === "conflict" && <><Button size="small" onClick={editor.cloud.reload}>Reload saved version</Button><Button size="small" onClick={() => void editor.cloud.copy()}>Save as a copy</Button></>}
+      </div>}
       <div className={s.navRow}>
         <nav aria-label="Editor views" className={s.tabs}>
           {(["code", "design", "viewport"] as const).map((name, i) => (
@@ -332,8 +335,12 @@ export default function Editor({
         )}
         <section
           className={`${s.canvasPanel} ${tab !== "viewport" ? s.hiddenCanvas : ""}`}
+          onPointerUpCapture={() => editor.live.client?.endInteraction()}
+          onPointerCancelCapture={() => editor.live.client?.endInteraction()}
           aria-label="3D viewport"
           aria-hidden={tab !== "viewport"}
+          onPointerEnter={() => { if (editor.selected) void editor.acquire([`entity:${editor.selected}`]); }}
+          onPointerDownCapture={() => { editor.live.client?.beginInteraction(); if (editor.selected) void editor.acquire([`entity:${editor.selected}`]); }}
         >
           <canvas
             ref={canvasRef}
@@ -422,17 +429,17 @@ export default function Editor({
             <div className={s.codeBody}>
               {editor.ready &&
                 (editor.game.script.language === "blocks" ? (
-                  <BlocksEditor
+                  <BlocksEditor collaboration={editor.shared ? editor.live.client : null}
                     key={editor.revision}
                     initial={editor.game.script.workspace}
                     disabled={editor.lock}
                     diagnostic={editor.diagnostic}
-                    onChange={(workspace) =>
-                      editor.script({ language: "blocks", workspace })
+                    onChange={(workspace, before) =>
+                      editor.script({ language: "blocks", workspace }, before ? { language: "blocks", workspace: before } : undefined)
                     }
                   />
                 ) : (
-                  <PythonEditor
+                  <PythonEditor collaboration={editor.shared ? editor.live.client : null}
                     source={editor.game.script.source}
                     readOnly={editor.lock}
                     diagnostic={editor.diagnostic}
@@ -460,9 +467,7 @@ export default function Editor({
         <span>
           <SaveIcon saved={!editor.dirty} />
           {editor.status === "idle" || editor.status === "ready"
-            ? editor.dirty
-              ? "Unsaved changes"
-              : editor.savedLabel
+            ? editor.cloud.message
             : editor.status}{" "}
           · {tab === "code" ? "World script" : editor.game.project.name}
         </span>

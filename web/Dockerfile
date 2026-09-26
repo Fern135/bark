@@ -32,6 +32,8 @@ CMD ["sh", "/usr/local/bin/bark-web-dev"]
 
 # ---- build ----
 FROM deps AS builder
+ARG NEXT_PUBLIC_ACCOUNT_RECOVERY_ENABLED=1
+ENV NEXT_PUBLIC_ACCOUNT_RECOVERY_ENABLED=$NEXT_PUBLIC_ACCOUNT_RECOVERY_ENABLED
 COPY web .
 RUN mkdir -p public
 RUN npm run build

@@ -12,7 +12,7 @@ test("marketplace filtering, links and responsive visual review", async ({
     if (request.url().includes("/runtime/"))
       runtimeRequests.push(request.url());
   });
-  await page.goto("/games");
+  await page.goto("/games?source=demos");
   await expect(
     page.getByRole("heading", { name: "Pick a world. Press play." }),
   ).toBeVisible();
@@ -189,6 +189,22 @@ for (const game of games)
         [0, 16],
       ])
         await walkTo(page, x, z);
+    } else if (game.category === "Racing") {
+      for (const goal of goals) {
+        // Worker position samples can lag key releases. Center between the posts
+        // in short steps, and clear each gate before moving sideways again.
+        for (let step = 0; step < 40; step++) {
+          const delta = goal.transform.position.x - (await position(page)).x;
+          if (Math.abs(delta) < 0.7) break;
+          const key = delta > 0 ? "d" : "a";
+          await page.keyboard.down(key);
+          await page.waitForTimeout(75);
+          await page.keyboard.up(key);
+          await page.waitForTimeout(200);
+        }
+        expect(Math.abs(goal.transform.position.x - (await position(page)).x)).toBeLessThan(0.7);
+        await walkTo(page, (await position(page)).x, goal.transform.position.z + 1.5);
+      }
     } else
       for (const goal of goals)
         await walkTo(
@@ -247,7 +263,7 @@ test("catalog editor handoff, local export and failed load recovery", async ({
   await page.goto("/games/woodland-wander");
   await page.getByRole("link", { name: "Open in editor" }).click();
   await expect(page.getByLabel("Project name")).toHaveValue("Woodland Wander");
-  await expect(page.getByText("Loaded from collection", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Ready to make your own" })).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Play", exact: true }),
   ).toBeEnabled();

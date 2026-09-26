@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: "**/integration/**",
   timeout: 120_000,
   expect: { timeout: 15_000 },
   workers: 1,
@@ -15,7 +16,7 @@ export default defineConfig({
   webServer: {
     command: "node scripts/serve-editor-test.mjs",
     url: "http://127.0.0.1:3101/editor",
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.BARK_REUSE_SERVER === "1",
     timeout: 60_000,
   },
 });

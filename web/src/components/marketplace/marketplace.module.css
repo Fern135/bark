@@ -1117,3 +1117,5 @@
     font-size: 21px;
   }
 }
+.account > a[data-account-link="games"] { display: inline; }
+@media (max-width: 600px) { .account { gap: 8px; } .account > a[data-account-link="games"] { font-size: 11px; } .account > button { font-size: 11px; padding: 8px; } }

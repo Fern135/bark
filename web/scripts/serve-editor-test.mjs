@@ -11,7 +11,7 @@ await cp(resolve(web, buildDir, 'static'), resolve(standalone, buildDir, 'static
 const server = spawn(process.execPath, ['server.js'], {
   cwd: standalone,
   stdio: 'inherit',
-  env: { ...process.env, HOSTNAME: '127.0.0.1', PORT: '3101' },
+  env: { ...process.env, HOSTNAME: '127.0.0.1', PORT: process.env.BARK_TEST_PORT || '3101' },
 });
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.kill(signal));
 server.on('exit', code => { process.exitCode = code ?? 0; });

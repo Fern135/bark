@@ -18,6 +18,7 @@ const eslintConfig = defineConfig([
     "public/havok/**",
     "public/scripting/**",
     "public/runtime/**",
+    "public/community-runtime/**",
   ]),
 ]);
 

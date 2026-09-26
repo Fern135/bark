@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("keyboard navigation and player startup cancellation", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/games");
+  await page.goto("/games?source=demos");
   await expect(page.getByRole("searchbox", { name: "Search games" })).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Skip to games" })).toBeFocused();

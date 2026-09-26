@@ -28,14 +28,17 @@ import {
 } from "@bark/scripting/blocks";
 import { createEngineAdapter } from "@bark/scripting/engine";
 import { parseGame, serializeGame } from "@bark/scripting/player";
-import { choicesFor, starterGame } from "./catalog";
+import { choicesFor } from "./catalog";
+import type { SaveSeed } from "@/lib/autosave";
+import { useAutosave } from "./use-autosave";
+import { useCollaboration } from "./use-collaboration";
+import { assignBlockIds, canonical } from "@/lib/collaboration";
 
 export type Game = GameDocument<ProjectDocument>;
-export function useEditor(initialGame?: Game) {
-  const [game, setGame] = useState<Game>(() => initialGame ? structuredClone(initialGame) : starterGame());
-  const [savedLabel, setSavedLabel] = useState(initialGame ? "Loaded from collection" : "Ready to create");
+export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = false) {
+  const [game, setGame] = useState<Game>(() => structuredClone(initialGame));
   const current = useRef(game);
-  const importedAtStart = useRef(!!initialGame);
+  const importedAtStart = useRef(!frameStarter);
   const canvas = useRef<HTMLCanvasElement>(null);
   const runtime = useRef<GameRuntime | null>(null);
   const session = useRef<ScriptingSession | null>(null);
@@ -43,8 +46,16 @@ export function useEditor(initialGame?: Game) {
   const [busy, setBusy] = useState(false);
   const operation = useRef(false);
   const [status, setStatus] = useState<SessionStatus>("idle");
-  const [dirty, setDirty] = useState(!initialGame);
-  const dirtyRef = useRef(!initialGame);
+  const dirtyRef = useRef(saveSeed.dirty);
+  const remoteGame = useRef<Game | null>(null);
+  const [remoteVersion, setRemoteVersion] = useState(0);
+  const receiveRemote = useCallback((next: Game) => { remoteGame.current = next; setRemoteVersion((n) => n + 1); }, []);
+  const live = useCollaboration(saveSeed, initialGame, receiveRemote);
+  const privateCloud = useAutosave(game, saveSeed, !saveSeed.collaboration);
+  const cloud = saveSeed.collaboration ? live : privateCloud;
+  const liveClient = live.client;
+  const dirty = cloud.dirty;
+  useEffect(() => { dirtyRef.current = cloud.dirty; }, [cloud.dirty]);
   const [diagnostic, setDiagnostic] = useState<Diagnostic>();
   const [output, setOutput] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<FeedbackSnapshot>({
@@ -69,7 +80,7 @@ export function useEditor(initialGame?: Game) {
   const cancelled = useRef<AbortController | null>(null);
   const alive = useRef(false);
   const lock =
-    !ready || busy || ["running", "paused", "preparing"].includes(status);
+    !ready || busy || ["running", "paused", "preparing"].includes(status) || (!!saveSeed.collaboration && (!live.connected || ["conflict", "error", "session"].includes(live.status)));
 
   const report = useCallback((error: unknown) => {
     if (alive.current)
@@ -77,15 +88,16 @@ export function useEditor(initialGame?: Game) {
         message: error instanceof Error ? error.message : String(error),
       });
   }, []);
-  const commit = useCallback((next: Game, changed = true) => {
+  const commit = useCallback((next: Game, changed = true, replacement = false, authoredBefore?: Game) => {
+    const previous = authoredBefore ?? current.current;
     current.current = next;
     setBlockChoices(choicesFor(next.project));
     setGame(next);
     if (changed) {
       dirtyRef.current = true;
-      setDirty(true);
+      liveClient?.update(next, replacement, previous);
     }
-  }, []);
+  }, [liveClient]);
 
   useEffect(() => {
     alive.current = true;
@@ -131,7 +143,8 @@ export function useEditor(initialGame?: Game) {
             setTransformPreview(null);
             if (event.phase === "commit") {
               recordTransform(event.entityId, event.before, event.transform);
-              commit({ ...current.current, project: engine!.exportProject() });
+              commit({ ...current.current, project: { ...engine!.exportProject(), name: current.current.project.name, cameras: current.current.project.cameras } });
+              liveClient?.endInteraction();
             }
           }
         }),
@@ -161,12 +174,15 @@ export function useEditor(initialGame?: Game) {
     };
     node.addEventListener("blur", blur);
     window.addEventListener("beforeunload", unload);
+    const leave = () => { dirtyRef.current = false; };
+    window.addEventListener("bark:leave-editor", leave);
     return () => {
       alive.current = false;
       abort.abort();
       cancelled.current?.abort();
       node.removeEventListener("blur", blur);
       window.removeEventListener("beforeunload", unload);
+      window.removeEventListener("bark:leave-editor", leave);
       observer?.disconnect();
       off.forEach((fn) => fn());
       scripting?.dispose();
@@ -174,11 +190,55 @@ export function useEditor(initialGame?: Game) {
       runtime.current = null;
       session.current = null;
     };
-  }, [report, commit, recordTransform]);
+  }, [report, commit, recordTransform, liveClient]);
 
   useEffect(() => {
-    if (ready) runtime.current?.editorTools.configure({ ...tools, selected, enabled: viewportActive && !lock });
-  }, [ready, tools, selected, viewportActive, lock, revision]);
+    if (ready) runtime.current?.editorTools.configure({ ...tools, selected, enabled: viewportActive && !lock && (!saveSeed.collaboration || !selected || liveClient?.owns(`entity:${selected}`) === true) });
+  }, [ready, tools, selected, viewportActive, lock, revision, live.locks, liveClient, saveSeed.collaboration]);
+
+  useEffect(() => {
+    if (!ready || !remoteGame.current || ["running", "paused", "preparing"].includes(status) || transformPreview || operation.current) return;
+    const next = remoteGame.current;
+    remoteGame.current = null;
+    const engine = runtime.current!;
+    const old = current.current;
+    void (async () => {
+      const needsLoad = ["assets", "materials", "prefabs", "input"].some((key) => canonical(old.project[key as keyof ProjectDocument]) !== canonical(next.project[key as keyof ProjectDocument]));
+      if (needsLoad) {
+        const camera = engine.cameras.get();
+        operation.current = true; setBusy(true);
+        try { await engine.load(next.project); engine.cameras.set(camera); }
+        finally { operation.current = false; if (alive.current) setBusy(false); }
+      } else {
+        const ids = new Set(next.project.entities.map((e) => e.id));
+        for (const entity of old.project.entities) if (!ids.has(entity.id)) engine.world.destroy(entity.id);
+        for (const entity of next.project.entities) {
+          const previous = old.project.entities.find((e) => e.id === entity.id);
+          if (!previous) engine.world.spawn(entity);
+          else if (canonical(previous) !== canonical(entity)) engine.world.update(entity.id, entity);
+        }
+        if (canonical(old.project.settings) !== canonical(next.project.settings)) engine.configure(next.project.settings);
+        for (const key of Object.keys(old.project.properties ?? {})) if (!(key in (next.project.properties ?? {}))) engine.properties.remove(null, key);
+        for (const [key, value] of Object.entries(next.project.properties ?? {})) if (canonical(old.project.properties?.[key]) !== canonical(value)) engine.properties.set(null, key, value);
+      }
+      // Remote changes invalidate only local transform history for the touched objects.
+      const changed = new Set([...old.project.entities, ...next.project.entities].filter((e) => canonical(old.project.entities.find((x) => x.id === e.id)) !== canonical(next.project.entities.find((x) => x.id === e.id))).map((e) => e.id));
+      history.current.undo = history.current.undo.filter((e) => !changed.has(e.id));
+      history.current.redo = history.current.redo.filter((e) => !changed.has(e.id));
+      setHistorySize({ undo: history.current.undo.length, redo: history.current.redo.length });
+      commit(next, false);
+    })().catch(report);
+  }, [remoteVersion, ready, status, transformPreview, busy, commit, report]);
+
+  const lastSelection = useRef(selected);
+  useEffect(() => {
+    if (selected !== lastSelection.current && saveSeed.collaboration && selected && live.connected) void liveClient?.acquire([`entity:${selected}`]);
+    lastSelection.current = selected;
+  }, [selected, live.connected, saveSeed.collaboration, liveClient]);
+
+  async function acquire(resources: string[]) {
+    return !saveSeed.collaboration || await liveClient?.acquire(resources) === true;
+  }
 
   function snapshot() {
     return {
@@ -186,11 +246,12 @@ export function useEditor(initialGame?: Game) {
       project: {
         ...runtime.current!.exportProject(),
         name: current.current.project.name,
+        cameras: current.current.project.cameras,
       },
     };
   }
-  function edit(action: (engine: GameRuntime) => void) {
-    if (lock || operation.current) return;
+  async function edit(action: (engine: GameRuntime) => void) {
+    if (lock || operation.current || !(await acquire(["*"]))) return;
     try {
       runtime.current!.editorTools.cancel();
       action(runtime.current!);
@@ -201,8 +262,8 @@ export function useEditor(initialGame?: Game) {
       report(error);
     }
   }
-  function update(id: string, changes: EntityChanges) {
-    if (lock || operation.current) return;
+  async function update(id: string, changes: EntityChanges) {
+    if (lock || operation.current || !(await acquire([`entity:${id}`]))) return;
     try {
       const engine = runtime.current!; engine.editorTools.cancel();
       const before = engine.world.get(id).transform;
@@ -212,11 +273,11 @@ export function useEditor(initialGame?: Game) {
       commit(snapshot()); setDiagnostic(undefined);
     } catch (error) { report(error); }
   }
-  function undoTransform(redo = false) {
+  async function undoTransform(redo = false) {
     if (lock || operation.current) return;
     const source = redo ? history.current.redo : history.current.undo;
     const target = redo ? history.current.undo : history.current.redo;
-    const entry = source.at(-1); if (!entry) return;
+    const entry = source.at(-1); if (!entry || !(await acquire([`entity:${entry.id}`]))) return;
     try {
       runtime.current!.editorTools.cancel();
       runtime.current!.transforms.set(entry.id, redo ? entry.after : entry.before);
@@ -225,45 +286,42 @@ export function useEditor(initialGame?: Game) {
       commit(snapshot()); setDiagnostic(undefined);
     } catch (error) { report(error); }
   }
-  function script(next: ScriptDocument) {
+  function script(next: ScriptDocument, before?: ScriptDocument) {
     if (
       lock ||
       operation.current ||
       JSON.stringify(next) === JSON.stringify(current.current.script)
     )
       return;
-    commit({ ...current.current, script: next });
+    commit({ ...current.current, script: next }, true, false, before ? { ...current.current, script: before } : undefined);
     setDiagnostic(undefined);
   }
-  function rename(name: string) {
-    if (!lock)
+  async function rename(name: string) {
+    if (!lock && saveSeed.role !== "editor" && await acquire(["section:name"]))
       commit({
         ...current.current,
         project: { ...current.current.project, name },
       });
   }
-  async function load(next: Game, imported = false) {
-    if (operation.current || lock) return false;
+  async function load(next: Game) {
+    if (operation.current || lock || !(await acquire(["*"]))) return false;
     operation.current = true;
     setBusy(true);
     setDiagnostic(undefined);
     const abort = new AbortController();
     cancelled.current = abort;
     try {
+      if (saveSeed.role === "editor") next = { ...next, project: { ...next.project, name: current.current.project.name } };
       const validated = await parseGame(JSON.stringify(next), {
         baseUrl: location.href,
         signal: abort.signal,
       });
+      if (saveSeed.collaboration) assignBlockIds(validated);
       await runtime.current!.load(validated.project, { signal: abort.signal });
       clearHistory();
       runtime.current!.cameras.frame(undefined, 1.05);
       if (abort.signal.aborted) return false;
-      commit(validated, !imported);
-      if (imported) {
-        setSavedLabel("Imported from file");
-        dirtyRef.current = false;
-        setDirty(false);
-      }
+      commit(validated, true, true);
       setSelected(
         validated.project.entities.find(
           (e) => !e.parentId && !e.tags.includes("ground"),
@@ -296,14 +354,13 @@ export function useEditor(initialGame?: Game) {
       });
       if (abort.signal.aborted) return;
       if (
-        dirtyRef.current &&
         !window.confirm(
           "Replace this world? Export JSON first to keep your unsaved changes.",
         )
       )
         return;
       operation.current = false;
-      await load(parsed, true);
+      await load(parsed);
     } catch (error) {
       if (!abort.signal.aborted) report(error);
     } finally {
@@ -311,15 +368,15 @@ export function useEditor(initialGame?: Game) {
       if (alive.current) setBusy(false);
     }
   }
-  async function save() {
-    if (lock || operation.current) return;
+  async function exportFile() {
+    if (!ready || operation.current) return;
     operation.current = true;
     setBusy(true);
     setDiagnostic(undefined);
     const abort = new AbortController();
     cancelled.current = abort;
     try {
-      const json = await serializeGame(snapshot(), {
+      const json = await serializeGame(current.current, {
         baseUrl: location.href,
         signal: abort.signal,
       });
@@ -331,10 +388,7 @@ export function useEditor(initialGame?: Game) {
       link.href = url;
       link.download = `${current.current.project.name.replace(/[^a-z0-9_-]+/gi, "-").replace(/^-|-$/g, "") || "world"}.bark.json`;
       link.click();
-      setSavedLabel("File saved locally");
       setTimeout(() => URL.revokeObjectURL(url), 1000);
-      dirtyRef.current = false;
-      setDirty(false);
     } catch (error) {
       if (!abort.signal.aborted) report(error);
     } finally {
@@ -385,8 +439,8 @@ export function useEditor(initialGame?: Game) {
       operation.current = false;
     }
   }
-  function convert() {
-    if (lock) return;
+  async function convert() {
+    if (lock || !(await acquire(["*"]))) return;
     try {
       const old = current.current.script;
       if (old.language === "blocks")
@@ -420,6 +474,7 @@ export function useEditor(initialGame?: Game) {
     setSelected(null);
   }
   return {
+    cloud, live, shared: !!saveSeed.collaboration, role: saveSeed.role ?? "owner", acquire,
     tools, setTools, setViewportActive, transformPreview, historySize, undoTransform,
     cancelTransform: () => runtime.current?.editorTools.cancel(),
     game,
@@ -429,7 +484,6 @@ export function useEditor(initialGame?: Game) {
     busy,
     status,
     dirty,
-    savedLabel,
     diagnostic,
     output,
     feedback,
@@ -444,7 +498,7 @@ export function useEditor(initialGame?: Game) {
     rename,
     load,
     importFile,
-    save,
+    exportFile,
     play,
     convert,
     remove,

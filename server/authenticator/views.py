@@ -91,7 +91,7 @@ async def csrf(request):
     window=settings.LOGIN_LOCKOUT_MINUTES * 60,
     count_statuses={401},  # only failed logins count (unknown names too, so lockouts don't reveal accounts)
     reset_statuses={200},  # a successful login clears the counter
-    message=f"Too many failed login attempts. Try again in {settings.LOGIN_LOCKOUT_MINUTES} minutes or reset your password.",
+    message=f"Too many failed login attempts. Try again in {settings.LOGIN_LOCKOUT_MINUTES} minutes.",
 )
 async def login(request):
     """
@@ -186,6 +186,8 @@ async def forgot_password(request):
     Response 200: always the same message, whether or not the account exists.
     Response 400: missing or invalid email.
     """
+    if not settings.ACCOUNT_RECOVERY_ENABLED:
+        return JsonResponse({"error": "Account recovery is not available yet."}, status=503)
     data = _json_body(request)
     email = _clean_email(data.get("email")) if data else None
     if email is None:
@@ -215,6 +217,8 @@ async def reset_password(request):
     Response 400: invalid/expired/used token, or the password fails Django's password
                   validators (AUTH_PASSWORD_VALIDATORS): {"error": ..., "details": [...]}
     """
+    if not settings.ACCOUNT_RECOVERY_ENABLED:
+        return JsonResponse({"error": "Account recovery is not available yet."}, status=503)
     data = _json_body(request)
     if data is None:
         return JsonResponse({"error": "Invalid JSON body"}, status=400)
@@ -257,6 +261,8 @@ async def forgot_username(request):
     Response 200: always the same message, whether or not the account exists.
     Response 400: missing or invalid email.
     """
+    if not settings.ACCOUNT_RECOVERY_ENABLED:
+        return JsonResponse({"error": "Account recovery is not available yet."}, status=503)
     data = _json_body(request)
     email = _clean_email(data.get("email")) if data else None
     if email is None:

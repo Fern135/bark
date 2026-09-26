@@ -7,6 +7,7 @@ import type { FeedbackSnapshot } from "@bark/engine";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { gameCover, gameFile, type MarketplaceGame } from "./catalog";
+import type { Game } from "@/lib/games";
 import s from "./marketplace.module.css";
 
 const emptyFeedback: FeedbackSnapshot = {
@@ -14,7 +15,7 @@ const emptyFeedback: FeedbackSnapshot = {
   notifications: [],
   prompt: null,
 };
-export function GameCanvas({ game }: { game: MarketplaceGame }) {
+export function GameCanvas({ game, document: savedDocument, runtimeBase = "", isolated = false, coverUrl }: { game: Pick<MarketplaceGame, "slug" | "title">; document?: Game; runtimeBase?: string; isolated?: boolean; coverUrl?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const shell = useRef<HTMLDivElement>(null);
   const player = useRef<GamePlayer | null>(null);
@@ -34,21 +35,29 @@ export function GameCanvas({ game }: { game: MarketplaceGame }) {
     async function open() {
       const { createGamePlayer } = await import("@bark/scripting/player");
       if (abort.signal.aborted) return;
-      const response = await fetch(gameFile(game.slug), {
-        signal: abort.signal,
-      });
-      if (!response.ok)
-        throw new Error(
-          "This world could not be downloaded. Please try again.",
-        );
-      const json = await response.text();
+      let json: string;
+      if (savedDocument) json = JSON.stringify(savedDocument);
+      else {
+        const response = await fetch(gameFile(game.slug), { signal: abort.signal });
+        if (!response.ok) throw new Error("This world could not be downloaded. Please try again.");
+        json = await response.text();
+      }
       if (abort.signal.aborted) return;
       instance = await createGamePlayer({
         canvas: node,
-        havokWasmUrl: "/runtime/HavokPhysics.wasm",
-        pythonRuntimeUrl: "/runtime/pyodide/",
-        workerFactory: () =>
-          new Worker("/runtime/worker.js", { type: "module" }),
+        havokWasmUrl: `${runtimeBase}/runtime/HavokPhysics.wasm`,
+        pythonRuntimeUrl: `${runtimeBase}/runtime/pyodide/`,
+        workerFactory: () => {
+          if (!isolated) return new Worker("/runtime/worker.js", { type: "module" });
+          // Chrome cannot start module blob workers from an opaque origin. A classic
+          // bootstrap can import the module; queue prepare until its handler exists.
+          const source = `const waiting=[];onmessage=e=>waiting.push(e);import(${JSON.stringify(`${runtimeBase}/runtime/worker.js`)}).then(()=>{for(const e of waiting)onmessage(e)}).catch(e=>postMessage({type:"error",session:waiting[0]?.data.session,diagnostic:{message:String(e)}}));`;
+          const url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+          const worker = new Worker(url, { credentials: "omit" });
+          const terminate = worker.terminate.bind(worker);
+          worker.terminate = () => { terminate(); URL.revokeObjectURL(url); };
+          return worker;
+        },
         signal: abort.signal,
       });
       if (abort.signal.aborted) {
@@ -64,7 +73,7 @@ export function GameCanvas({ game }: { game: MarketplaceGame }) {
       resize = new ResizeObserver(() => instance?.resize());
       resize.observe(node);
       await instance.load(json, {
-        baseUrl: location.href,
+        baseUrl: runtimeBase ? `${runtimeBase}/` : location.href,
         signal: abort.signal,
       });
     }
@@ -90,7 +99,7 @@ export function GameCanvas({ game }: { game: MarketplaceGame }) {
       document.removeEventListener("visibilitychange", visibility);
       document.removeEventListener("fullscreenchange", full);
     };
-  }, [game.slug, attempt]);
+  }, [game.slug, savedDocument, attempt, runtimeBase, isolated]);
 
   async function action(
     kind: "play" | "pause" | "resume" | "stop" | "restart",
@@ -149,7 +158,8 @@ export function GameCanvas({ game }: { game: MarketplaceGame }) {
               transition={{ duration: 0.25 }}
             >
               <Image
-                src={gameCover(game.slug)}
+                src={coverUrl ?? (savedDocument ? `${runtimeBase}/images/games/hero.webp` : gameCover(game.slug))}
+                unoptimized={isolated}
                 alt=""
                 fill
                 sizes="(max-width: 1000px) 95vw, 65vw"

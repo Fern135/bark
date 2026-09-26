@@ -1,0 +1,10 @@
+[Unit]
+Description=Bark service and backup monitoring
+After=docker.service network-online.target
+
+[Service]
+Type=oneshot
+UMask=0077
+WorkingDirectory=/opt/bark/app
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/python3 /opt/bark/app/deploy/bark.py monitor

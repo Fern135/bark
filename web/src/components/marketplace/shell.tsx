@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { AccountLinks } from "@/components/auth/session";
 import { Icon } from "@/components/ui/icon";
 import s from "./marketplace.module.css";
 
@@ -20,11 +21,7 @@ export function MarketHeader() {
         </Link>
       </nav>
       <div className={s.account}>
-        <Link href="/login">Log in</Link>
-        <Link className={s.join} href="/signup">
-          Join Bark
-          <Icon name="arrow" size={17} />
-        </Link>
+        <AccountLinks joinClassName={s.join} />
       </div>
     </header>
   );

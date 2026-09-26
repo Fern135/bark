@@ -83,6 +83,68 @@ class CanvasTestCase(IsolatedTestCase):
 
 # ---- document.py: conversion ------------------------------------------------------------
 
+class AutosaveTests(CanvasTestCase):
+    def test_changed_cookie_cannot_save_a_draft_to_another_account(self):
+        response = self.client.post("/api/canvas/games/", {}, content_type="application/json", HTTP_X_BARK_OWNER=str(uuid.uuid4()))
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(Game.objects.count(), 0)
+
+    def test_creation_retry_does_not_overwrite_or_duplicate(self):
+        game_id = str(uuid.uuid4())
+        first = self.create_game(id=game_id, name="First")
+        retry = self.api("POST", "games/", {"id": game_id, "name": "Retry"})
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(retry.json(), first)
+        self.assertEqual(Game.objects.count(), 1)
+
+    def test_other_owner_cannot_reuse_id(self):
+        game = self.create_game()
+        client = self.client_for(self.make_user("bob"))
+        response = self.api("POST", "games/", {"id": game["id"]}, client=client)
+        self.assertEqual(response.status_code, 409)
+        self.assertNotIn("document", response.json())
+
+    def test_invalid_creation_id(self):
+        self.assertEqual(self.api("POST", "games/", {"id": "wrong"}).status_code, 400)
+
+    def test_malformed_revision_is_rejected_without_writing(self):
+        game = self.create_game()
+        for value in ('1', '"-1"', '"²"', '"' + '9' * 100 + '"'):
+            response = self.client.patch(f'/api/canvas/games/{game["id"]}/', {"name": "Changed"}, content_type="application/json", HTTP_IF_MATCH=value)
+            self.assertEqual(response.status_code, 400)
+        self.assertEqual(self.api("GET", f'games/{game["id"]}/').json(), game)
+
+    def test_revision_preconditions_on_each_detail_write(self):
+        for method, body in (("PUT", sample(name="Changed")), ("PATCH", {"name": "Changed"}), ("DELETE", None)):
+            with self.subTest(method=method):
+                game = self.create_game()
+                url = f'/api/canvas/games/{game["id"]}/'
+                stale = self.client.generic(method, url, json.dumps(body), content_type="application/json", HTTP_IF_MATCH='"0"')
+                self.assertEqual(stale.status_code, 412)
+                self.assertEqual(stale.json()["revision"], game["revision"])
+                current = self.client.get(url).json()
+                self.assertEqual(current, game)
+                valid = self.client.generic(method, url, json.dumps(body), content_type="application/json", HTTP_IF_MATCH=f'"{game["revision"]}"')
+                self.assertEqual(valid.status_code, 204 if method == "DELETE" else 200)
+
+    def test_precondition_does_not_disclose_other_users_revision(self):
+        game = self.create_game()
+        client = self.client_for(self.make_user("bob"))
+        response = client.put(f'/api/canvas/games/{game["id"]}/', sample(), content_type="application/json", HTTP_IF_MATCH='"0"')
+        self.assertEqual(response.status_code, 404)
+        self.assertNotIn("revision", response.json())
+
+    def test_blocks_and_python_backup_survive_roundtrip(self):
+        document = sample()
+        workspace = {"blocks": {"languageVersion": 0, "blocks": []}}
+        document["script"] = {"language": "blocks", "workspace": workspace}
+        game = self.create_game(document)
+        self.assertEqual(game["document"]["script"], document["script"])
+        document["script"] = {"language": "python", "source": "print('hello')\n", "blocksBackup": workspace}
+        response = self.client.put(f'/api/canvas/games/{game["id"]}/', document, content_type="application/json", HTTP_IF_MATCH=f'"{game["revision"]}"')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["document"]["script"], document["script"])
+
 class DocumentConversionTests(CanvasTestCase):
     def new_game(self, document):
         game = Game.objects.create(owner=self.user, name="x")
@@ -311,7 +373,7 @@ class GameTests(CanvasTestCase):
         self.create_game(client=self.client_for(self.make_user("bob")))
         games = self.api("GET", "games/").json()["games"]
         self.assertEqual([g["id"] for g in games], [second["id"], first["id"]])
-        self.assertEqual(set(games[0]), {"id", "name", "revision", "created_at", "updated_at"})
+        self.assertTrue({"id", "name", "revision", "created_at", "updated_at", "owner", "role", "collaboration"}.issubset(games[0]))
 
     def test_get(self):
         game = self.create_game()
