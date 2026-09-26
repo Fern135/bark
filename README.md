@@ -51,6 +51,19 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 This bind-mounts `web/`, `server/` and `ws/` into their containers. It runs `next dev`,
 `manage.py runserver` (with `DJANGO_DEBUG=1`) and `uvicorn --reload`.
 
+
+<!-- migration -->
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+docker compose exec server python manage.py migrate
+```
+
+<!-- create new app -->
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec server python manage.py startapp <app_name>
+```
+
+
 ## Other useful Docker commands
 
 ```bash
@@ -75,17 +88,9 @@ In dev mode, add `-f docker-compose.yml -f docker-compose.dev.yml` after `docker
 
 ## server/ (Django)
 
-No Django code is included yet. Until `server/manage.py` exists, the `server` container prints a
-notice and idles, so the rest of the stack still runs.
-
-To create the project so it matches the Docker setup (the WSGI module defaults to `config.wsgi`):
-
-```bash
-cd server
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-django-admin startproject config .
-```
+The Django project is `server/server/` (settings in `server/server/settings.py`, WSGI module
+`server.wsgi`, set by `DJANGO_WSGI_MODULE` in `.env`). Environment values are loaded by
+`server/config/Config.py` and used in `settings.py`.
 
 On start, the container runs `migrate` and then gunicorn. Set `DJANGO_MIGRATE_ON_START=0` to skip
 the migration. `settings.py` should read its values from the environment, not hard-code them:

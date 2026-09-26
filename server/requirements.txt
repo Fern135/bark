@@ -15,6 +15,9 @@ argon2-cffi==25.1.0
 # Postgres driver
 psycopg[binary]==3.3.6
 
+# Loads bark/.env when running outside Docker (config/Config.py)
+python-dotenv==1.2.3
+
 # Production WSGI server
 gunicorn==26.2.0
 
