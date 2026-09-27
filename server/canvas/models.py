@@ -65,6 +65,7 @@ class Game(models.Model):
     document_version = models.PositiveSmallIntegerField(default=1)  # document "version"
     project_version = models.PositiveSmallIntegerField(default=1)   # project.version
     properties = models.JSONField(default=dict, blank=True)      # project.properties
+    object_scripts = models.JSONField(default=dict, blank=True)
     project_extra = models.JSONField(default=dict, blank=True)   # unknown project keys
 
     # Bumped on every change to the game or any of its sections. Clients can compare it to

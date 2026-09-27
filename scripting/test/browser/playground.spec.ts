@@ -235,7 +235,7 @@ async def run():
     await crate.destroy()
     assert not (await game.input("forward")).held
     assert isinstance(await player.grounded(), bool)
-    assert isinstance((await player.velocity()).y, float)
+    assert isinstance((await player.velocity()).y, (int, float))
     try:
         await game.entity("missing").position()
     except Exception:
@@ -252,7 +252,7 @@ async def interact(actor_id):
     );
     session.play();
   });
-  await expect.poll(() => page.evaluate(() => (window as any).__libraryOutput)).toContain("API OK");
+  await expect.poll(() => page.evaluate(() => (window as any).__libraryError ?? (window as any).__libraryOutput)).toEqual(expect.stringContaining("API OK"));
   await page.evaluate(() => {
     const engine = (window as any).__barkTest.runtime;
     const p = engine.world.get("player").worldTransform.position;

@@ -10,7 +10,7 @@ import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Collaborators } from "./collaborators";
 import { WorkspacePresence } from "./workspace-presence";
-import { BlocksEditor, PythonEditor } from "./code-editors";
+import { BlocksEditor, PythonEditor, type CodeHistory } from "./code-editors";
 import { ByteHint, ByteToggle } from "./byte-hint";
 import { useByteHints } from "./use-byte-hints";
 import { ScenePanel } from "./scene-panel";
@@ -52,6 +52,8 @@ export default function Editor({
   const [languageOpen, setLanguageOpen] = useState(false);
   const [drawer, setDrawer] = useState<"scene" | "inspector" | null>(null);
   const [thumbs, setThumbs] = useState<Record<string, string>>({});
+  const [codeHistory] = useState<CodeHistory>(() => new Map());
+  const historyKey = JSON.stringify([editor.documentGeneration, editor.scriptId]);
   const file = useRef<HTMLInputElement>(null);
   const drawerTrigger = useRef<HTMLElement | null>(null);
   const selectedEntity = editor.game.project.entities.find(
@@ -81,7 +83,7 @@ export default function Editor({
     return () => window.removeEventListener("keydown", key);
   }, [tab, adding, drawer, editor]);
   const playing = ["running", "paused", "preparing"].includes(editor.status);
-  const byte = useByteHints(editor.game, saveSeed.id, editor.localScriptRevision, tab === "code" && !editor.lock && !adding && !replacing && !languageOpen && !drawer, editor.documentGeneration);
+  const byte = useByteHints(editor.game, saveSeed.id, editor.localScriptRevision, tab === "code" && !editor.lock && !adding && !replacing && !languageOpen && !drawer, editor.documentGeneration, editor.scriptId);
   useEffect(() => {
     let disposed = false;
     renderThumbnails()
@@ -268,16 +270,21 @@ export default function Editor({
         </nav>
         {tab === "code" ? (
           <div className={s.language}>
+            <select className={s.codeBrowser} aria-label="Code browser" value={editor.scriptId ?? ""} onChange={(e) => editor.setSelected(e.target.value || null)}>
+                  <option value="">World · Global code</option>
+                  {editor.game.project.entities.map((entity) => <option key={entity.id} value={entity.id}>{entity.name} · Object code</option>)}
+                </select>
             <Popover.Root open={languageOpen} onOpenChange={setLanguageOpen}>
               <Popover.Trigger asChild>
                 <button
                   className={s.languageTrigger}
                   aria-expanded={languageOpen}
+                  title={`${selected?.name ?? "World · Global code"} · ${editor.activeScript.language}`}
                   onClick={() => setLanguageOpen(!languageOpen)}
                 >
                   Language:{" "}
                   <strong>
-                    {editor.game.script.language === "blocks"
+                    {editor.activeScript.language === "blocks"
                       ? "Blocks"
                       : "Python"}
                   </strong>
@@ -296,15 +303,15 @@ export default function Editor({
                     size="small"
                     disabled={
                       editor.lock ||
-                      (editor.game.script.language === "python" &&
-                        !editor.game.script.blocksBackup)
+                      (editor.activeScript.language === "python" &&
+                        !editor.activeScript.blocksBackup)
                     }
                     onClick={() => {
                       editor.convert();
                       setLanguageOpen(false);
                     }}
                   >
-                    {editor.game.script.language === "blocks"
+                    {editor.activeScript.language === "blocks"
                       ? "Convert to Python"
                       : "Restore blocks"}
                   </Button>
@@ -422,36 +429,37 @@ export default function Editor({
           </motion.section>
         )}
         {tab === "code" && (
-          <motion.section className={s.codePanel} aria-label="World code" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+          <motion.section className={s.codePanel} aria-label={selected ? `${selected.name} code` : "World code"} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
             <ByteToggle enabled={byte.enabled} signedIn={byte.signedIn} toggle={byte.toggle} />
             <div className={s.codeHeading}>
               <div>
                 <h1>
-                  World <span>· Global code</span>
+                  {selected?.name ?? "World"} <span>· {selected ? "Object code" : "Global code"}</span>
                 </h1>
-                <p>Runs across your whole project.</p>
+                <p>{selected ? "Runs for this object. Use this object to control it." : "Runs across your whole project."}</p>
+
               </div>
             </div>
             <div className={s.codeBody}>
               {editor.ready &&
-                (editor.game.script.language === "blocks" ? (
-                  <BlocksEditor collaboration={editor.shared ? editor.live.client : null}
-                    key={editor.revision}
-                    initial={editor.game.script.workspace}
+                (editor.activeScript.language === "blocks" ? (
+                  <BlocksEditor history={codeHistory} historyKey={historyKey} ownerId={editor.scriptId} project={editor.game.project} collaboration={editor.shared ? editor.live.client : null}
+                    key={JSON.stringify([editor.revision, editor.scriptId])}
+                    initial={editor.activeScript.workspace}
                     disabled={editor.lock}
-                    diagnostic={editor.diagnostic}
+                    diagnostic={editor.activeDiagnostic}
                     onChange={(workspace, before, local) =>
-                      editor.script({ language: "blocks", workspace }, before ? { language: "blocks", workspace: before } : undefined, local ?? false)
+                      editor.script({ language: "blocks", workspace }, before ? { language: "blocks", workspace: before } : undefined, local ?? false, editor.scriptId)
                     }
                   />
                 ) : (
-                  <PythonEditor collaboration={editor.shared ? editor.live.client : null}
-                    source={editor.game.script.source}
+                  <PythonEditor history={codeHistory} historyKey={historyKey} key={JSON.stringify([editor.revision, editor.scriptId])} ownerId={editor.scriptId} collaboration={editor.shared ? editor.live.client : null}
+                    source={editor.activeScript.source}
                     readOnly={editor.lock}
-                    diagnostic={editor.diagnostic}
+                    diagnostic={editor.activeDiagnostic}
                     onChange={(source, before) => {
-                      if (editor.game.script.language === "python")
-                        editor.script({ ...editor.game.script, source }, { ...editor.game.script, source: before });
+                      if (editor.activeScript.language === "python")
+                        editor.script({ ...editor.activeScript, source }, { ...editor.activeScript, source: before }, true, editor.scriptId);
                     }}
                   />
                 ))}
@@ -469,11 +477,11 @@ export default function Editor({
           {editor.status === "idle" || editor.status === "ready"
             ? editor.cloud.message
             : editor.status}{" "}
-          · {tab === "code" ? "World script" : editor.game.project.name}
+          · {tab === "code" ? selected ? `${selected.name} · Object code` : "World · Global code" : editor.game.project.name}
         </span>
         <span>
           {tab === "code"
-            ? "World script | Connect a block, then press Play"
+            ? `${selected ? `${selected.name} · Object code` : "World · Global code"} | Press Play to run all scripts`
             : tab === "design"
               ? "Model studio | Your changes update the world"
               : "Right drag to orbit | Middle drag to pan | Scroll to zoom"}
@@ -483,7 +491,8 @@ export default function Editor({
         <section className={s.console} aria-label="Script output">
           {editor.diagnostic && (
             <p role="alert" className={s.error}>
-              {editor.diagnostic.message}
+              {editor.diagnostic.scriptId ? editor.game.project.entities.find((entity) => entity.id === editor.diagnostic?.scriptId)?.name ?? editor.diagnostic.scriptId : "Global"}{editor.diagnostic.line ? ` · line ${editor.diagnostic.line}` : ""}: {editor.diagnostic.message}
+              <button onClick={() => { editor.setSelected(editor.diagnostic?.scriptId ?? null); setTab("code"); }}>Open code</button>
             </p>
           )}
           {editor.output.length > 0 && (

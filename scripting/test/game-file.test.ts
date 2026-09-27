@@ -13,7 +13,7 @@ test("blocks and Python round trip normalized authored documents without mutatin
     const saving = serializeGame(doc);
     doc.project.name = "Edited after capture";
     const loaded = await parseGame(await saving);
-    assert.deepEqual(loaded, { ...captured, project: validateProject(captured.project) });
+    assert.deepEqual(loaded, { ...captured, version: 2, objectScripts: {}, project: validateProject(captured.project) });
     loaded.project.properties!.score = 999;
     assert.equal(doc.project.properties!.score, 0);
   }
@@ -50,7 +50,7 @@ test("invalid references in nested blocks and backups retain block-specific diag
     });
   }
   await assert.rejects(parseGame("oops"), /valid game JSON/);
-  await assert.rejects(parseGame(JSON.stringify({ ...doc, version: 2 })), /Unsupported/);
+  await assert.rejects(parseGame(JSON.stringify({ ...doc, version: 99 })), /Unsupported/);
   await assert.rejects(parseGame(JSON.stringify(doc.project)), /incomplete/);
 });
 

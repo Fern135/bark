@@ -1,20 +1,29 @@
+import { historyField } from "@codemirror/commands";
+import type { ProjectDocument } from "@bark/engine";
+import { choicesFor } from "./catalog";
 import { useEffect, useRef, useState } from "react";
 import { EditorView, basicSetup } from "codemirror";
 import { Decoration } from "@codemirror/view";
 import { Compartment, EditorState, StateEffect, StateField, Transaction } from "@codemirror/state";
 import { python } from "@codemirror/lang-python";
 import { setDiagnostics } from "@codemirror/lint";
-import { Blockly, validateBlockReferences } from "@bark/scripting/blocks";
+import { Blockly, setBlockChoices, validateBlockReferences } from "@bark/scripting/blocks";
 import { Icon } from "@/components/ui/icon";
 import { BarkFlyout, paletteCategories, showPalette } from "./block-palette";
 import s from "./editor.module.css";
 import { BarkRenderer } from "./block-renderer";
 import { CategoryIcon } from "./category-icon";
 import type { Diagnostic } from "@bark/scripting";
-import { canonical, type Collaboration } from "@/lib/collaboration";
+import { canonical, scriptResource, type Collaboration } from "@/lib/collaboration";
 import { textChanges } from "@/lib/shared-text";
 
+export type CodeHistory = Map<string, {
+  blocks?: { document: string; undo: ReturnType<Blockly.Events.Abstract["toJson"]>[]; redo: ReturnType<Blockly.Events.Abstract["toJson"]>[] };
+  python?: ReturnType<EditorState["toJSON"]>;
+}>;
+
 export function BlocksEditor({
+  ownerId = null, project, history, historyKey,
   collaboration,
   initial,
   disabled,
@@ -22,6 +31,10 @@ export function BlocksEditor({
   executingBlock,
   onChange,
 }: {
+  history?: CodeHistory;
+  historyKey?: string;
+  ownerId?: string | null;
+  project?: ProjectDocument;
   collaboration?: Collaboration | null;
   initial: Record<string, unknown>;
   disabled: boolean;
@@ -29,6 +42,7 @@ export function BlocksEditor({
   executingBlock?: string;
   onChange(value: Record<string, unknown>, before?: Record<string, unknown>, local?: boolean): void;
 }) {
+  const resource = (name: string) => scriptResource(ownerId, name);
   const [category, setCategory] = useState("Events");
   const [search, setSearch] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(true);
@@ -43,6 +57,7 @@ export function BlocksEditor({
     change.current = onChange;
   }, [onChange]);
   useEffect(() => {
+    if (project) setBlockChoices({ ...choicesFor(project), ownerId });
     if (validateBlockReferences(initial).length) return;
     BarkRenderer.register();
     const ws = Blockly.inject(container.current!, {
@@ -90,7 +105,11 @@ export function BlocksEditor({
     }
     showPalette(ws, "Events", "");
     let authored = Blockly.serialization.workspaces.save(ws);
-    change.current(authored, initial);
+    const saved = historyKey ? history?.get(historyKey)?.blocks : undefined;
+    if (saved?.document === canonical(authored)) {
+      ws.getUndoStack().push(...saved.undo.map((event) => Blockly.Events.fromJson(event, ws)));
+      ws.getRedoStack().push(...saved.redo.map((event) => Blockly.Events.fromJson(event, ws)));
+    }
     let gesture = false, settledAt = 0;
     const publish = () => {
       const next = Blockly.serialization.workspaces.save(ws), before = authored;
@@ -107,7 +126,7 @@ export function BlocksEditor({
     const resourceFor = (event: Event) => {
       const target = event.target as Node;
       const block = ws.getAllBlocks(false).find((b) => b.getSvgRoot()?.contains(target));
-      return block ? `block:${block.getRootBlock().id}` : "*";
+      return block ? resource(`block:${block.getRootBlock().id}`) : resource("script");
     };
     const hover = (event: Event) => { const resource = resourceFor(event); if (live.current && resource !== "*") void live.current.acquire([resource]); };
     const guard = (event: Event) => {
@@ -121,12 +140,12 @@ export function BlocksEditor({
       const client = live.current;
       if (!client || event.key === "Tab" || event.key === "Escape") return;
       const selected = Blockly.common.getSelected();
-      const resource = selected instanceof Blockly.BlockSvg ? `block:${selected.getRootBlock().id}` : "*";
+      const targetResource = selected instanceof Blockly.BlockSvg ? resource(`block:${selected.getRootBlock().id}`) : resource("script");
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "z") {
         event.preventDefault(); event.stopPropagation();
-        void client.acquire(["*"]).then((ok) => { if (ok) { blockUndo.current(event.shiftKey); client.endInteraction(); } });
-      } else if (!client.owns(resource)) {
-        event.preventDefault(); event.stopPropagation(); void client.acquire([resource]);
+        void client.acquire([resource("script")]).then((ok) => { if (ok) { blockUndo.current(event.shiftKey); client.endInteraction(); } });
+      } else if (!client.owns(targetResource)) {
+        event.preventDefault(); event.stopPropagation(); void client.acquire([targetResource]);
       }
     };
     container.current!.addEventListener("keydown", keyboardGuard, true);
@@ -200,6 +219,12 @@ export function BlocksEditor({
       target.removeEventListener("pointerover", hover);
       target.removeEventListener("pointerdown", guard, true);
       ws.removeChangeListener(listener);
+      if (historyKey) history?.set(historyKey, { blocks: {
+        document: canonical(Blockly.serialization.workspaces.save(ws)),
+        undo: ws.getUndoStack().map((event) => event.toJson()),
+        redo: ws.getRedoStack().map((event) => event.toJson()),
+      } });
+      live.current?.endInteraction();
       ws.dispose();
       workspace.current = null;
     };
@@ -216,6 +241,7 @@ export function BlocksEditor({
   useEffect(() => {
     const ws = workspace.current;
     if (!ws) return;
+    if (project) setBlockChoices({ ...choicesFor(project), ownerId });
     if (paletteOpen) showPalette(ws, category, search);
     else ws.getFlyout()?.hide();
     Blockly.svgResize(ws);
@@ -223,7 +249,7 @@ export function BlocksEditor({
       const frame = requestAnimationFrame(() => ws.zoomToFit());
       return () => cancelAnimationFrame(frame);
     }
-  }, [paletteOpen, category, search]);
+  }, [paletteOpen, category, search, project, ownerId]);
   useEffect(() => {
     const ws = workspace.current;
     if (!ws) return;
@@ -285,14 +311,14 @@ export function BlocksEditor({
         <button
           aria-label="Undo block edit"
           disabled={disabled}
-          onClick={async () => { if (!collaboration || await collaboration.acquire(["*"])) { blockUndo.current(false); collaboration?.endInteraction(); } }}
+          onClick={async () => { if (!collaboration || await collaboration.acquire([resource("script")])) { blockUndo.current(false); collaboration?.endInteraction(); } }}
         >
           <Icon name="undo" />
         </button>
         <button
           aria-label="Redo block edit"
           disabled={disabled}
-          onClick={async () => { if (!collaboration || await collaboration.acquire(["*"])) { blockUndo.current(true); collaboration?.endInteraction(); } }}
+          onClick={async () => { if (!collaboration || await collaboration.acquire([resource("script")])) { blockUndo.current(true); collaboration?.endInteraction(); } }}
         >
           <Icon name="undo" style={{ transform: "scaleX(-1)" }} />
         </button>
@@ -336,6 +362,7 @@ function recolorBlocks(workspace: Blockly.WorkspaceSvg) {
 }
 
 export function PythonEditor({
+  ownerId = null, history, historyKey,
   collaboration,
   source,
   readOnly: requestedReadOnly,
@@ -343,6 +370,9 @@ export function PythonEditor({
   executingLine,
   onChange,
 }: {
+  history?: CodeHistory;
+  historyKey?: string;
+  ownerId?: string | null;
   collaboration?: Collaboration | null;
   source: string;
   readOnly: boolean;
@@ -350,7 +380,7 @@ export function PythonEditor({
   executingLine?: number;
   onChange?(value: string, before: string): void;
 }) {
-  const readOnly = requestedReadOnly || (!!collaboration && !collaboration.owns("source"));
+  const readOnly = requestedReadOnly || (!!collaboration && !collaboration.owns(scriptResource(ownerId, "source")));
   const remoteChange = useRef(false);
   const [editable] = useState(() => new Compartment());
   const container = useRef<HTMLDivElement>(null),
@@ -360,9 +390,7 @@ export function PythonEditor({
     change.current = onChange;
   }, [onChange]);
   useEffect(() => {
-    const view = new EditorView({
-      parent: container.current!,
-      state: EditorState.create({
+    const config = {
         doc: source,
         extensions: [
           basicSetup,
@@ -383,10 +411,13 @@ export function PythonEditor({
               change.current?.(update.state.doc.toString(), update.startState.doc.toString());
           }),
         ],
-      }),
-    });
+    };
+    const saved = historyKey ? history?.get(historyKey)?.python : undefined;
+    const view = new EditorView({ parent: container.current!, state: saved?.doc === source
+      ? EditorState.fromJSON(saved, config, { history: historyField }) : EditorState.create(config) });
     editor.current = view;
     return () => {
+      if (historyKey) history?.set(historyKey, { python: view.state.toJSON({ history: historyField }) });
       view.destroy();
       editor.current = null;
     };

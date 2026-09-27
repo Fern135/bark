@@ -1,5 +1,5 @@
 import { compileBlocks, Blockly } from "@bark/scripting/blocks";
-import { compilePython } from "@bark/scripting";
+import { compilePython, scriptFor } from "@bark/scripting";
 import type { ScriptDocument } from "@bark/scripting";
 import type { ByteSnapshot } from "@/lib/byte-hints";
 import { canonical } from "@/lib/collaboration";
@@ -35,28 +35,30 @@ export function semanticScript(script: ScriptDocument): unknown {
   } } };
 }
 
-export function byteContext(game: Game) {
-  return { ...choicesFor(game.project), tags: Object.fromEntries(game.project.entities.map((entity) => [entity.id, entity.tags])) };
+export function byteContext(game: Game, ownerId: string | null = null) {
+  return { ...choicesFor(game.project), ownerId, tags: Object.fromEntries(game.project.entities.map((entity) => [entity.id, entity.tags])) };
 }
 
-export function byteKey(game: Game): string {
-  return canonical({ script: semanticScript(game.script), context: byteContext(game) });
+export function byteKey(game: Game, ownerId: string | null = null): string {
+  const script = scriptFor(game, ownerId);
+  return canonical({ script: semanticScript(script), context: byteContext(game, ownerId) });
 }
 
-export function buildByteSnapshot(game: Game): ByteSnapshot | null {
-  if (new TextEncoder().encode(byteKey(game)).length > 64 * 1024) return null;
-  const choices = choicesFor(game.project);
-  const compilation = game.script.language === "blocks" ? compileBlocks(game.script, choices) : compilePython(game.script);
+export function buildByteSnapshot(game: Game, ownerId: string | null = null): ByteSnapshot | null {
+  const script = scriptFor(game, ownerId);
+  if (new TextEncoder().encode(byteKey(game, ownerId)).length > 64 * 1024) return null;
+  const choices = { ...choicesFor(game.project), ownerId };
+  const compilation = script.language === "blocks" ? compileBlocks(script, choices) : compilePython(script);
   const blocks: ByteSnapshot["blocks"] = [];
-  if (game.script.language === "blocks") {
+  if (script.language === "blocks") {
     const workspace = new Blockly.Workspace();
     try {
-      Blockly.serialization.workspaces.load(game.script.workspace, workspace);
+      Blockly.serialization.workspaces.load(script.workspace, workspace);
       for (const block of workspace.getAllBlocks(false)) {
         blocks.push({ id: block.id, type: block.type, label: block.toString(), fields: Object.fromEntries(block.inputList.flatMap((input) => input.fieldRow.filter((field) => field.name).map((field) => [field.name, field.getValue()]))) });
       }
     } finally { workspace.dispose(); }
   }
   if (!compilation.python.trim() && !compilation.diagnostics.length) return null;
-  return { language: game.script.language, python: compilation.python, sourceMap: compilation.sourceMap, blocks, context: byteContext(game), diagnostics: compilation.diagnostics };
+  return { language: script.language, python: compilation.python, sourceMap: compilation.sourceMap, blocks, context: byteContext(game, ownerId), diagnostics: compilation.diagnostics };
 }

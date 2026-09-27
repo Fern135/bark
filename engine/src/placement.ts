@@ -10,10 +10,11 @@ import type { EntityDefinition, PlacementAPI, PlacementSnapshot, PlacementSource
 export class Placement implements PlacementAPI {
   private state: PlacementSnapshot = { active: false, valid: false, reason: "Choose an object", position: { x: 0, y: 0, z: 0 }, yaw: 0, grid: 1, rotationSnap: 90 };
   private definitions: EntityDefinition[] = [];
+  private duplicating = false;
   private preview: ReturnType<RuntimeWorld["preview"]> | null = null;
   private material: StandardMaterial | null = null;
   private ray: { from: Vec3; to: Vec3 } | null = null;
-  constructor(private world: () => RuntimeWorld, private scene: () => Scene, private project: () => ProjectDocument, private editing: () => void) {}
+  constructor(private world: () => RuntimeWorld, private scene: () => Scene, private project: () => ProjectDocument, private editing: () => void, private duplicated: (ids: Record<string, string>) => void = () => {}) {}
   get(): PlacementSnapshot { return structuredClone(this.state); }
   configure(options: { grid?: number; rotationSnap?: number }): void {
     this.editing(); const grid = options.grid ?? this.state.grid, rotationSnap = options.rotationSnap ?? this.state.rotationSnap;
@@ -39,7 +40,7 @@ export class Placement implements PlacementAPI {
     check(!!root, "Placement requires a root."); root.transform.position = { x: 0, y: 0, z: 0 };
     check(Math.abs(root.transform.rotation.x) < 1e-6 && Math.abs(root.transform.rotation.z) < 1e-6, "Placement requires an upright root.");
     validateEntities(definitions, this.project()); this.world().checkCapacity(definitions.length);
-    this.cancel(); this.definitions = definitions;
+    this.cancel(); this.definitions = definitions; this.duplicating = "duplicateId" in source;
     this.state = { ...this.state, active: true, valid: false, yaw: 2 * Math.atan2(root.transform.rotation.y, root.transform.rotation.w) * 180 / Math.PI, reason: "Point at a surface" };
     try {
       this.preview = this.world().preview(definitions);
@@ -104,8 +105,10 @@ export class Placement implements PlacementAPI {
     root.transform.position = { ...this.state.position }; const q = this.preview!.roots[0].rotationQuaternion!;
     root.transform.rotation = { x: q.x, y: q.y, z: q.z, w: q.w };
     if (root.character) root.character.spawn = { position: { ...root.transform.position }, rotation: { ...root.transform.rotation } };
-    const id = this.world().insertSubtree(copies); this.cancel(); return id;
+    const id = this.world().insertSubtree(copies), duplicated = this.duplicating; this.cancel();
+    if (duplicated) this.duplicated(Object.fromEntries(ids));
+    return id;
   }
   private tint(valid: boolean): void { if (this.material) this.material.emissiveColor = Color3.FromHexString(valid ? "#70DB9C" : "#EF7D86"); }
-  cancel(): void { this.preview?.dispose(); this.preview = null; this.material?.dispose(); this.material = null; this.definitions = []; this.ray = null; this.state.active = false; this.state.valid = false; this.state.reason = "Choose an object"; }
+  cancel(): void { this.duplicating = false; this.preview?.dispose(); this.preview = null; this.material?.dispose(); this.material = null; this.definitions = []; this.ray = null; this.state.active = false; this.state.valid = false; this.state.reason = "Choose an object"; }
 }

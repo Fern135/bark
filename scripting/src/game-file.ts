@@ -1,7 +1,7 @@
 import { EngineError, validateProject } from "@bark/engine";
 import type { AssetDefinition, ProjectDocument } from "@bark/engine";
 import { compilePython, validateDocument } from "./document.js";
-import type { Compilation, Diagnostic, GameDocument } from "./types.js";
+import type { Compilation, CompiledProgram, Diagnostic, GameDocument } from "./types.js";
 import type { BlockChoices } from "./blocks.js";
 
 export type GameFile = GameDocument<ProjectDocument>;
@@ -25,19 +25,22 @@ export function choicesFor(project: ProjectDocument): BlockChoices {
     ]),
   };
 }
-export async function compileGame(game: GameFile): Promise<Compilation> {
-  const script = game.script;
-  const workspace = script.language === "blocks" ? script.workspace : script.blocksBackup;
-  if (workspace) {
-    const { compileBlocks, validateBlockReferences } = await import("./blocks.js");
-    const choices = choicesFor(game.project);
-    const diagnostics = validateBlockReferences(workspace, choices);
-    if (diagnostics.length) throw new GameFileError(diagnostics[0].message, diagnostics);
-    const result = compileBlocks({ language: "blocks", workspace }, choices);
-    if (result.diagnostics.length) throw new GameFileError(result.diagnostics[0].message, result.diagnostics);
-    if (script.language === "blocks") return result;
+export async function compileGame(game: GameFile): Promise<CompiledProgram> {
+  const scripts: CompiledProgram["scripts"] = [];
+  const entries: [string | null, GameFile["script"]][] = [[null, game.script], ...game.project.entities
+    .filter((entity) => Object.hasOwn(game.objectScripts ?? {}, entity.id))
+    .map((entity): [string, GameFile["script"]] => [entity.id, game.objectScripts![entity.id]])];
+  for (const [scriptId, script] of entries as [string | null, GameFile["script"]][]) {
+    let result: Compilation;
+    if (script.language === "blocks") {
+      const { compileBlocks } = await import("./blocks.js");
+      result = compileBlocks(script, { ...choicesFor(game.project), ownerId: scriptId });
+    } else result = compilePython(script);
+    scripts.push({ ...result, scriptId });
   }
-  return compilePython(script);
+  const diagnostics = scripts.flatMap((script) => script.diagnostics.map((d) => ({ ...d, scriptId: script.scriptId })));
+  if (diagnostics.length) throw new GameFileError(diagnostics[0].message, diagnostics);
+  return { python: scripts[0].python, sourceMap: scripts[0].sourceMap, diagnostics, scripts };
 }
 function assetUrl(asset: AssetDefinition, baseUrl?: string): string {
   let url: URL;
@@ -115,6 +118,13 @@ async function normalize(value: unknown, options: GameFileOptions): Promise<Game
   const project = validateProject(document.project);
   const game: GameFile = { ...document, project };
   for (const asset of project.assets) asset.url = assetUrl(asset, options.baseUrl);
+  for (const [id, script] of [[null, game.script], ...Object.entries(game.objectScripts ?? {})] as [string | null, GameFile["script"]][]) {
+    if (script.language === "python" && script.blocksBackup) {
+      const { validateBlockReferences } = await import("./blocks.js");
+      const diagnostics = validateBlockReferences(script.blocksBackup, { ...choicesFor(project), ownerId: id }).map((d) => ({ ...d, scriptId: id }));
+      if (diagnostics.length) throw new GameFileError(diagnostics[0].message, diagnostics);
+    }
+  }
   await compileGame(game);
   checkCancelled(options.signal);
   return game;
@@ -148,5 +158,5 @@ export async function serializeGame(document: GameDocument, options: GameFileOpt
     asset.url = `data:${loaded.mime};base64,${btoa(binary)}`;
   }
   checkCancelled(options.signal);
-  return JSON.stringify(game, null, 2);
+  return JSON.stringify({ ...game, version: 2, objectScripts: game.objectScripts ?? {} }, null, 2);
 }

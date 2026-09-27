@@ -9,6 +9,10 @@ import time
 from collections import deque
 from itertools import islice
 from types import SimpleNamespace
+from contextvars import ContextVar
+
+_script = ContextVar("bark_script", default=None)
+_files = {"script.py": None}
 import bark_bridge
 
 
@@ -21,9 +25,10 @@ def _vector(x, y, z):
 
 def _report(error):
     frames = traceback.extract_tb(error.__traceback__)
-    lines = [f.lineno for f in frames if f.filename == "script.py"]
-    line = getattr(error, "lineno", None) if isinstance(error, SyntaxError) else (lines[-1] if lines else None)
-    bark_bridge.report_error(json.dumps({"message": str(error), "line": line, "traceback": "".join(traceback.format_exception(error))}))
+    frames = [f for f in frames if f.filename in _files]
+    filename = getattr(error, "filename", None) if isinstance(error, SyntaxError) else (frames[-1].filename if frames else None)
+    line = getattr(error, "lineno", None) if isinstance(error, SyntaxError) else (frames[-1].lineno if frames else None)
+    bark_bridge.report_error(json.dumps({"scriptId": _files.get(filename, _script.get()), "message": str(error), "line": line, "traceback": "".join(traceback.format_exception(error))}))
 
 
 def _json(value):
@@ -132,6 +137,9 @@ class Entity:
 class Game:
     def __init__(self):
         self._handlers = []
+        self._tasks = {}
+        self._namespaces = {}
+        self._location_script = None
         self._timers = []
         self._queued = 0
         self._started = False
@@ -146,6 +154,53 @@ class Game:
         self._activity = deque(maxlen=200)
         self._location = None
         self._scope = {}
+
+    def _load_program(self, payload):
+        loop = asyncio.get_event_loop()
+        original_create_task = loop.create_task
+        def create_task(coroutine, **kwargs):
+            task = original_create_task(coroutine, **kwargs)
+            context = kwargs.get("context")
+            owner = context.get(_script) if context is not None else _script.get()
+            if owner in self._namespaces:
+                tasks = self._tasks.setdefault(owner, set())
+                tasks.add(task)
+                task.add_done_callback(tasks.discard)
+            return task
+        # Pyodide's custom task-factory path calls a removed Python helper.
+        loop.create_task = create_task
+        for index, script in enumerate(json.loads(payload)):
+            owner = script.get("scriptId")
+            filename = "script.py" if owner is None else f"object_{index}.py"
+            _files[filename] = owner
+            namespace = {"__name__": "__bark_script__", "__bark_owner__": owner, "game": self}
+            if owner is not None:
+                namespace["this"] = Entity(owner)
+            self._namespaces[owner] = namespace
+            if owner is None:
+                self._globals = namespace
+            token = _script.set(owner)
+            try:
+                exec(compile(script["python"], filename, "exec"), namespace)
+            except BaseException as error:
+                _report(error)
+                return
+            finally:
+                _script.reset(token)
+
+    def _destroy_owner(self, owner):
+        kept = []
+        for handler in self._handlers:
+            if handler[2].__globals__.get("__bark_owner__") == owner:
+                self._queued -= handler[3].qsize()
+            else:
+                kept.append(handler)
+        self._handlers = kept
+        for task in self._tasks.pop(owner, []):
+            task.cancel()
+        for key in list(self._named_timers):
+            if key[0] == owner:
+                del self._named_timers[key]
 
     async def target(self, actor_id):
         result = await self._call("target", actor=actor_id)
@@ -169,7 +224,7 @@ class Game:
 
     async def start_timer(self, name, seconds, repeat=False):
         await self._cooperate()
-        _name(name)
+        name = (_script.get(), _name(name))
         seconds = float(seconds)
         if not math.isfinite(seconds) or seconds <= 0:
             raise ValueError("Timer duration must be finite and positive")
@@ -180,6 +235,7 @@ class Game:
 
     async def cancel_timer(self, name):
         await self._cooperate()
+        name = (_script.get(), _name(name))
         self._named_timers.pop(name, None)
         self._discard_timer(name)
 
@@ -204,7 +260,7 @@ class Game:
         if not self._started:
             raise RuntimeError("Use gameplay operations inside event handlers")
         await self._gate.wait()
-        result = await bark_bridge.request_json(_json({"op": op, **kwargs}))
+        result = await bark_bridge.request_json(_json({"op": op, **kwargs, "scriptId": _script.get()}))
         await self._gate.wait()
         return json.loads(result)
 
@@ -262,9 +318,10 @@ class Game:
         return self._register("message", _name(name))
 
     def on_timer(self, name):
-        return self._register("timer", _name(name))
+        return self._register("timer", (_script.get(), _name(name)))
 
     async def _run(self, fn, queue):
+        token = _script.set(fn.__globals__.get("__bark_owner__"))
         try:
             while True:
                 args, event = await queue.get()
@@ -277,14 +334,23 @@ class Game:
             raise
         except BaseException as error:
             _report(error)
+        finally:
+            _script.reset(token)
 
     def _event(self, payload):
         event = json.loads(payload)
+        if event["type"] == "destroy":
+            self._destroy_owner(event["entityId"])
+            return
         if event["type"] == "start":
             self._started = True
             self._gate.set()
             for _, _, fn, queue in self._handlers:
-                asyncio.create_task(self._run(fn, queue))
+                token = _script.set(fn.__globals__.get("__bark_owner__"))
+                try:
+                    asyncio.create_task(self._run(fn, queue))
+                finally:
+                    _script.reset(token)
         for kind, key, _, queue in self._handlers:
             if event["type"] != kind:
                 continue
@@ -305,7 +371,7 @@ class Game:
                     continue
                 args = ()
             elif kind in ("message", "timer"):
-                if event["name"] != key:
+                if ((event.get("scriptId"), event["name"]) if kind == "timer" else event["name"]) != key:
                     continue
                 if kind == "timer" and not queue.empty():
                     continue
@@ -336,7 +402,7 @@ class Game:
                     self._named_timers[name] = (elapsed + seconds, seconds, repeat)
                 else:
                     del self._named_timers[name]
-                self._event(_json({"type": "timer", "name": name}))
+                self._event(_json({"type": "timer", "name": name[1], "scriptId": name[0]}))
         self._snapshot()
 
     def _record(self, fn, event, phase):
@@ -348,9 +414,10 @@ class Game:
         sys.settrace(self._trace if enabled else None)
 
     def _trace(self, frame, event, arg):
-        if frame.f_code.co_filename != "script.py":
+        if frame.f_code.co_filename not in _files:
             return None
         if event == "line":
+            self._location_script = _files[frame.f_code.co_filename]
             self._location = frame.f_lineno
             self._scope = frame.f_locals.copy()
             self._snapshot()
@@ -359,6 +426,7 @@ class Game:
     def _mark(self, line):
         if self._inspection:
             frame = sys._getframe(1)
+            self._location_script = _files.get(frame.f_code.co_filename)
             self._location, self._scope = line, frame.f_locals.copy()
             self._snapshot()
 
@@ -386,7 +454,7 @@ class Game:
         self._last_snapshot = now
         def values(scope):
             return {k: self._preview(v) for k, v in islice(scope.items(), 100) if not k.startswith("_") and k != "game" and not inspect.isroutine(v)}
-        bark_bridge.inspect_json(_json({"line": self._location, "globals": values(getattr(self, "_globals", {})), "locals": values(self._scope), "activity": list(self._activity)}))
+        bark_bridge.inspect_json(_json({"scriptId": self._location_script, "line": self._location, "globals": values(self._namespaces.get(self._location_script, getattr(self, "_globals", {}))), "locals": values(self._scope), "activity": list(self._activity)}))
 
     def _pause(self):
         self._gate.clear()

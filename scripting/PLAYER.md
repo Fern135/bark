@@ -2,7 +2,7 @@
 
 ## File contract
 
-`GameDocument` stays at version 1: `{ version: 1, project, script }`. The project is the engine's normalized authored `ProjectDocument`; the script is the original blocks workspace or Python source, including its optional blocks backup. No compiled Python copy is stored. Blocks are compiled when validating and playing the file; Python runs only after explicit Play.
+`GameDocument` exports version 2: `{ version: 2, project, script, objectScripts }`. Version 1 files are accepted as global-only games. `objectScripts` maps entity IDs to independent scripts. The project is the engine's normalized authored `ProjectDocument`; the script is the original blocks workspace or Python source, including its optional blocks backup. No compiled Python copy is stored. Blocks are compiled when validating and playing the file; Python runs only after explicit Play.
 
 `serializeGame(document, { baseUrl?, signal? })` captures a detached document before its first asynchronous operation, validates the project and script references, fetches each distinct asset URL once, and returns formatted JSON. Script Lab supplies `runtime.exportProject()` and its current script, never the mutable running world. Failed/cancelled packaging returns no partial file and does not modify the editor. The browser must be allowed to fetch external assets (including CORS permission).
 
@@ -44,7 +44,8 @@ const offDiagnostic = player.onDiagnostic(showDiagnostic);
 
 // Separately, in an authoring host with its own engine and script document:
 const json = await serializeGame({
-  version: 1,
+  version: 2,
+  objectScripts: {},
   project: authoringRuntime.exportProject(),
   script: currentScript,
 }, { baseUrl: location.href });

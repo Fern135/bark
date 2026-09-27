@@ -67,7 +67,8 @@ scope.onmessage = async ({ data: message }) => {
           const request = ++requestId;
           return new Promise<string>((resolve, reject) => {
             pending.set(request, { resolve, reject });
-            send({ type: "request", request, operation: JSON.parse(payload) });
+            const { scriptId, ...operation } = JSON.parse(payload);
+            send({ type: "request", request, operation, scriptId });
           });
         },
         report_error(payload: string) {
@@ -82,10 +83,7 @@ scope.onmessage = async ({ data: message }) => {
       game = api.game.copy();
       api.destroy();
       game._inspect(inspectionEnabled);
-      py.globals.set("_bark_source", message.python);
-      await py.runPythonAsync(
-        "from bark import _report, game\ngame._globals = {'__name__': '__bark_script__'}\ntry:\n    exec(compile(_bark_source, 'script.py', 'exec'), game._globals)\nexcept BaseException as error:\n    _report(error)",
-      );
+      game._load_program(JSON.stringify(message.scripts ?? [{ scriptId: null, python: message.python }]));
       if (!failed) send({ type: "ready" });
       return;
     }

@@ -9,7 +9,9 @@ import type {
   ProjectDocument,
 } from "@bark/engine";
 import {
-  compilePython,
+  scriptFor,
+  copyObjectScripts,
+  withScript,
   convertToPython,
   createScriptingSession,
   restoreBlocks,
@@ -24,15 +26,15 @@ import type {
 import {
   compileBlocks,
   setBlockChoices,
-  validateBlockReferences,
 } from "@bark/scripting/blocks";
 import { createEngineAdapter } from "@bark/scripting/engine";
-import { parseGame, serializeGame } from "@bark/scripting/player";
+import { compileGame, GameFileError, parseGame, serializeGame } from "@bark/scripting/player";
 import { choicesFor } from "./catalog";
+import { semanticScript } from "./byte-snapshot";
 import type { SaveSeed } from "@/lib/autosave";
 import { useAutosave } from "./use-autosave";
 import { useCollaboration } from "./use-collaboration";
-import { assignBlockIds, canonical } from "@/lib/collaboration";
+import { assignBlockIds, canonical, scriptResource } from "@/lib/collaboration";
 
 export type Game = GameDocument<ProjectDocument>;
 export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = false) {
@@ -58,6 +60,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
   const dirty = cloud.dirty;
   useEffect(() => { dirtyRef.current = cloud.dirty; }, [cloud.dirty]);
   const [diagnostic, setDiagnostic] = useState<Diagnostic>();
+  const [scriptDiagnostics, setScriptDiagnostics] = useState<Map<string | null, Diagnostic>>(() => new Map());
   const [output, setOutput] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<FeedbackSnapshot>({
     hud: {},
@@ -65,6 +68,10 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     prompt: null,
   });
   const [selected, setSelected] = useState<string | null>("player");
+  const scriptId = game.project.entities.some((e) => e.id === selected) ? selected : null;
+  const activeScript = scriptFor(game, scriptId);
+  const selectedRef = useRef(scriptId);
+  useEffect(() => { selectedRef.current = scriptId; }, [scriptId]);
   const [tools, setTools] = useState<Omit<EditorToolOptions, "selected" | "enabled">>({ tool: "move", space: "world", snapping: true, moveSnap: 0.5, resizeSnap: 0.25, rotateSnap: 15 });
   const [viewportActive, setViewportActive] = useState(true);
   const [transformPreview, setTransformPreview] = useState<{ id: string; transform: Transform; label: string } | null>(null);
@@ -85,16 +92,19 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
   const lock =
     !ready || busy || ["running", "paused", "preparing"].includes(status) || (!!saveSeed.collaboration && (!live.connected || ["conflict", "error", "session"].includes(live.status)));
 
-  const report = useCallback((error: unknown) => {
-    if (alive.current)
-      setDiagnostic({
-        message: error instanceof Error ? error.message : String(error),
-      });
+  const report = useCallback((error: unknown, owner: string | null = null) => {
+    if (!alive.current) return;
+    const diagnostics = error instanceof GameFileError && error.diagnostics.length
+      ? error.diagnostics : [{ scriptId: owner, message: error instanceof Error ? error.message : String(error) }];
+    setDiagnostic(diagnostics[0]);
+    setScriptDiagnostics((previous) => new Map([...previous, ...diagnostics.map((item): [string | null, Diagnostic] => [item.scriptId ?? null, item])]));
   }, []);
   const commit = useCallback((next: Game, changed = true, replacement = false, authoredBefore?: Game) => {
     const previous = authoredBefore ?? current.current;
+    if (changed) next = { ...next, version: 2, objectScripts: next.objectScripts ?? {} };
+    if (next.objectScripts) next = { ...next, objectScripts: Object.fromEntries(Object.entries(next.objectScripts).filter(([id]) => next.project.entities.some((e) => e.id === id))) };
     current.current = next;
-    setBlockChoices(choicesFor(next.project));
+    setBlockChoices({ ...choicesFor(next.project), ownerId: selectedRef.current });
     setGame(next);
     if (changed) {
       dirtyRef.current = true;
@@ -140,6 +150,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       );
       session.current = scripting;
       off.push(
+        engine.on("entityDuplicate", ({ ids }) => commit(copyObjectScripts(snapshot(), ids))),
         engine.on("editorSelection", ({ entityId }) => setSelected(entityId)),
         engine.on("editorTransform", (event) => {
           liveClient?.publishPresence({ preview: event.phase !== "cancel" ? { id: event.entityId, transform: event.transform } : null }, event.phase !== "preview");
@@ -156,6 +167,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
         scripting.onStatus(setStatus),
         scripting.onDiagnostic((value) => {
           setDiagnostic(value);
+          setScriptDiagnostics((previous) => new Map(previous).set(value.scriptId ?? null, value));
           if (engine?.state === "paused") scripting?.stop();
         }),
         scripting.onOutput(({ text }) =>
@@ -291,16 +303,23 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       commit(snapshot()); setDiagnostic(undefined);
     } catch (error) { report(error); }
   }
-  function script(next: ScriptDocument, before?: ScriptDocument, local = true) {
-    if (
-      lock ||
-      operation.current ||
-      JSON.stringify(next) === JSON.stringify(current.current.script)
-    )
-      return;
-    commit({ ...current.current, script: next }, true, false, before ? { ...current.current, script: before } : undefined);
-    if (local) setLocalScriptRevision((value) => value + 1);
-    setDiagnostic(undefined);
+  function script(next: ScriptDocument, before?: ScriptDocument, local = true, owner: string | null = scriptId) {
+    if (lock || operation.current || (owner !== null && !current.current.project.entities.some((e) => e.id === owner))) return;
+    const previous = scriptFor(current.current, owner);
+    if (JSON.stringify(next) === JSON.stringify(previous)) return;
+    // Blockly normalizes an empty workspace on mount; opening code is not an edit.
+    if (!local && owner !== null && !current.current.objectScripts?.[owner]) return;
+    let oldDocument: Game | undefined;
+    if (before && (owner === null || current.current.objectScripts?.[owner])) {
+      oldDocument = structuredClone(current.current);
+      if (owner === null) oldDocument.script = before;
+      else oldDocument.objectScripts![owner] = before;
+    }
+    commit(withScript(current.current, owner, next), true, false, oldDocument);
+    if (local && canonical(semanticScript(next)) !== canonical(semanticScript(before ?? previous)))
+      setLocalScriptRevision((value) => value + 1);
+    setScriptDiagnostics((previous) => { const next = new Map(previous); next.delete(owner); return next; });
+    setDiagnostic((previous) => (previous?.scriptId ?? null) === owner ? undefined : previous);
   }
   async function rename(name: string) {
     if (!lock && saveSeed.role !== "editor" && await acquire(["section:name"]))
@@ -336,6 +355,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       setRevision((n) => n + 1);
       setOutput([]);
       setDocumentGeneration((n) => n + 1);
+      setScriptDiagnostics(new Map());
       return true;
     } catch (error) {
       if (!abort.signal.aborted) {
@@ -410,29 +430,10 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       const s = session.current!;
       s.stop();
       setDiagnostic(undefined);
+      setScriptDiagnostics(new Map());
       setOutput([]);
       const doc = current.current;
-      const choices = choicesFor(doc.project);
-      setBlockChoices(choices);
-      const workspace =
-        doc.script.language === "blocks"
-          ? doc.script.workspace
-          : doc.script.blocksBackup;
-      if (workspace) {
-        const errors = validateBlockReferences(workspace, choices);
-        if (errors.length) {
-          setDiagnostic(errors[0]);
-          return;
-        }
-      }
-      const compilation =
-        doc.script.language === "blocks"
-          ? compileBlocks(doc.script, choices)
-          : compilePython(doc.script);
-      if (compilation.diagnostics.length) {
-        setDiagnostic(compilation.diagnostics[0]);
-        return;
-      }
+      const compilation = await compileGame(doc);
       await s.prepare(compilation);
       if (!alive.current) return;
       s.play();
@@ -447,15 +448,16 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     }
   }
   async function convert() {
-    if (lock || !(await acquire(["*"]))) return;
+    const owner = scriptId;
+    if (lock || !(await acquire([scriptResource(owner, "script")]))) return;
     try {
-      const old = current.current.script;
+      const old = scriptFor(current.current, owner);
       if (old.language === "blocks")
         script(
           convertToPython(
             old,
-            compileBlocks(old, choicesFor(current.current.project)),
-          ),
+            compileBlocks(old, { ...choicesFor(current.current.project), ownerId: owner }),
+          ), undefined, true, owner,
         );
       else if (
         old.blocksBackup &&
@@ -463,10 +465,10 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
           "Restore the saved blocks? Python edits made since conversion will be replaced.",
         )
       )
-        script(restoreBlocks(old));
+        script(restoreBlocks(old), undefined, true, owner);
       setRevision((n) => n + 1);
     } catch (error) {
-      report(error);
+      report(error, owner);
     }
   }
   function remove() {
@@ -486,6 +488,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     tools, setTools, setViewportActive, transformPreview, historySize, undoTransform,
     cancelTransform: () => runtime.current?.editorTools.cancel(),
     game,
+    activeScript, scriptId,
     canvas,
     session,
     ready,
@@ -493,6 +496,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     status,
     dirty,
     diagnostic,
+    activeDiagnostic: scriptDiagnostics.get(scriptId),
     output,
     feedback,
     selected,

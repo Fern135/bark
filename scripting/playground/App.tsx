@@ -5,6 +5,7 @@ import havokWasmUrl from "@babylonjs/havok/lib/esm/HavokPhysics.wasm?url";
 import {
   createScriptingSession,
   compilePython,
+  copyObjectScripts,
   convertToPython,
   restoreBlocks,
 } from "../src/index";
@@ -14,7 +15,7 @@ import {
   validateBlockReferences,
 } from "../src/blocks";
 import { createEngineAdapter } from "../src/engine";
-import { choicesFor, parseGame, serializeGame } from "../src/game-file";
+import { compileGame, choicesFor, parseGame, serializeGame } from "../src/game-file";
 import type {
   Diagnostic,
   GameDocument,
@@ -82,6 +83,7 @@ export function App() {
         }),
       );
       session.current = scripting;
+      engine.on("entityDuplicate", ({ ids }) => setDocument((doc) => copyObjectScripts({ ...doc, project: engine.exportProject() }, ids)));
       scripting.onStatus(setStatus);
       scripting.onOutput(({ text, stream }) =>
         setOutput((previous) =>
@@ -164,7 +166,7 @@ export function App() {
     setDiagnostic(undefined);
     setOutput([]);
     if (session.current?.status === "error") session.current.stop();
-    await session.current!.prepare(compiled);
+    await session.current!.prepare(await compileGame(documentRef.current));
     setPrepared(compiled.python);
   }
   async function save() {
@@ -175,9 +177,8 @@ export function App() {
     try {
       const project = runtime.current.exportProject();
       const captured: GameDocument = {
-        version: 1,
+        ...structuredClone(documentRef.current),
         project,
-        script: structuredClone(documentRef.current.script),
       };
       const json = await serializeGame(captured, {
         baseUrl: window.location.href,
@@ -323,7 +324,7 @@ export function App() {
                 </button>
               )}
             </div>
-            <span className="badge">1 game script</span>
+            <span className="badge">Global script</span>
           </div>
           <div className="authoring-actions">
             {document.script.language === "blocks" ? (

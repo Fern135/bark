@@ -4,6 +4,7 @@ import hashlib
 import json
 import struct
 import uuid
+from urllib.parse import unquote
 
 class OpError(Exception):
     def __init__(self, code, message):
@@ -30,12 +31,35 @@ def digest(document):
     return hashlib.sha256(canonical(normalized(document)).encode()).hexdigest()
 
 
+def script_resource(resource):
+    if resource.startswith("object:"):
+        _, owner, local = resource.split(":", 2)
+        return unquote(owner), local
+    return None, resource
+
+
+def is_source(resource):
+    return script_resource(resource)[1] == "source"
+
+
 def roots(document):
     script = document["script"]
     return script.get("workspace", {}).get("blocks", {}).get("blocks", []) if script["language"] == "blocks" else []
 
 
 def value_at(document, resource):
+    owner, local = script_resource(resource)
+    if owner is not None:
+        script = document.get("objectScripts", {}).get(owner)
+        if local == "script":
+            return script
+        if script is None:
+            raise OpError("INVALID_OP", "Create the object script before editing its contents")
+        if local not in ("source", "variables") and not local.startswith("block:"):
+            raise OpError("INVALID_OP", "Unknown object script resource")
+        return value_at({"script": script}, local)
+    if resource == "version":
+        return document["version"]
     if resource == "*":
         return document
     if resource == "script":
@@ -57,6 +81,12 @@ def value_at(document, resource):
 def conflicts(a, b, document):
     if a == b or "*" in (a, b):
         return True
+    owner_a, local_a = script_resource(a)
+    owner_b, local_b = script_resource(b)
+    if owner_a is not None or owner_b is not None:
+        if owner_a != owner_b:
+            return False
+        a, b = local_a, local_b
     script_resources = lambda r: r in ("script", "source", "variables") or r.startswith("block:")
     if any(r in ("script", "variables") for r in (a, b)) and script_resources(a) and script_resources(b):
         return True
@@ -80,9 +110,27 @@ def apply_ops(document, ops):
         if not isinstance(op, dict) or op.get("op") != "set" or not isinstance(op.get("resource"), str) or "before" not in op or "value" not in op:
             raise OpError("INVALID_OP", "Expected a resource edit with before and value")
         resource, value = op["resource"], copy.deepcopy(op["value"])
+        if resource == "version" and value == 2 and result.get("version") == 2:
+            continue
         if value_at(result, resource) != op["before"]:
             raise OpError("CONFLICT", "This item changed. Keep your work as a copy or reload.")
-        if resource == "*":
+        owner, local = script_resource(resource)
+        if owner is not None:
+            scripts = result.setdefault("objectScripts", {})
+            if local == "script":
+                if value is None:
+                    scripts.pop(owner, None)
+                else:
+                    scripts[owner] = value
+            else:
+                scoped = apply_ops({"script": scripts[owner]}, [{**op, "resource": local}])
+                scripts[owner] = scoped["script"]
+        elif resource == "version":
+            if value != 2:
+                raise OpError("INVALID_OP", "Only document version 2 is supported for upgrades")
+            result["version"] = value
+            result.setdefault("objectScripts", {})
+        elif resource == "*":
             result = value
         elif resource == "script":
             result["script"] = value
@@ -129,8 +177,8 @@ def assign_block_ids(document):
                         block(connection[key])
         for root in value.get("blocks", {}).get("blocks", []):
             block(root)
-    script = document["script"]
-    for key in ("workspace", "blocksBackup"):
-        if isinstance(script.get(key), dict):
-            workspace(script[key])
+    for script in [document["script"], *document.get("objectScripts", {}).values()]:
+        for key in ("workspace", "blocksBackup"):
+            if isinstance(script.get(key), dict):
+                workspace(script[key])
     return changed
