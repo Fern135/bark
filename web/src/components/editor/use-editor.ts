@@ -466,16 +466,18 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       report(error);
     }
   }
-  function remove() {
-    if (!selected || lock) return;
+  async function remove(id: string | null = selected) {
+    if (!id || lock) return;
+    const entity = current.current.project.entities.find((e) => e.id === id);
+    if (!entity) return;
     if (
       !window.confirm(
-        `Delete ${current.current.project.entities.find((e) => e.id === selected)?.name}? Scripts referencing it will need updating.`,
+        `Delete ${entity.name}? Scripts referencing it will need updating.`,
       )
     )
       return;
-    edit((engine) => engine.world.destroy(selected));
-    setSelected(null);
+    await edit((engine) => engine.world.destroy(id));
+    setSelected((currentSelection) => current.current.project.entities.some((e) => e.id === currentSelection) ? currentSelection : null);
   }
   return {
     cloud, live, shared: !!saveSeed.collaboration, role: saveSeed.role ?? "owner", acquire,

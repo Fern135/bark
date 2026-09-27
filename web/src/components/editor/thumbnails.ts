@@ -8,7 +8,7 @@ export function renderThumbnails() {
       Object.fromEntries([
         ...catalog.map((item) => [
           item.id,
-          `/models/starter/thumbnails/${item.id}.png`,
+          item.id === "player" ? "/models/byte/thumbnail.png" : `/models/starter/thumbnails/${item.id}.png`,
         ]),
         ["world", "/models/starter/thumbnails/world.png"],
       ]),

@@ -12,6 +12,7 @@ export class Cameras {
   private follow: FreeCamera;
   private value: CameraSettings;
   private toolsEnabled = false;
+  private controlMode = "";
   constructor(private readonly scene: Scene, private readonly world: World, settings: CameraSettings, private readonly canvas?: HTMLCanvasElement) {
     this.value = structuredClone(settings);
     this.editor = new ArcRotateCamera("editor", -Math.PI / 2.5, Math.PI / 3, 20, vector(settings.target), scene);
@@ -23,10 +24,24 @@ export class Cameras {
   get(): CameraSettings { return structuredClone(this.value); }
   editorControls(enabled: boolean, dragging = false): void {
     this.toolsEnabled = enabled;
+    const mode = `${enabled}:${dragging}:${this.value.active}`;
+    // Reattaching during pointerdown cancels Babylon's active mouse gesture.
+    if (mode === this.controlMode) return;
+    this.controlMode = mode;
     const pointers = this.editor.inputs.attached.pointers as import("@babylonjs/core/Cameras/Inputs/arcRotateCameraPointersInput.js").ArcRotateCameraPointersInput;
     pointers.buttons = enabled ? [1, 2] : [0, 1, 2];
     this.editor.detachControl();
-    if (!dragging && this.value.active === "editor" && this.canvas) this.editor.attachControl(true, !enabled, enabled ? 1 : 2);
+    if (!dragging && this.value.active === "editor" && this.canvas) {
+      this.editor.movement.input.resetInputMap();
+      this.editor.attachControl(true, !enabled, enabled ? 1 : 2);
+      if (enabled) {
+        const input = this.editor.movement.input;
+        // In Babylon 9, allowing a button does not assign it an interaction.
+        input.inputMap = input.inputMap.filter((entry) => entry.source !== "pointer");
+        input.addEntry({ source: "pointer", button: 2, interaction: "rotate" });
+        input.addEntry({ source: "pointer", button: 1, interaction: "pan" });
+      }
+    }
     if (dragging) {
       this.editor.inertialAlphaOffset = this.editor.inertialBetaOffset = this.editor.inertialRadiusOffset = 0;
       this.editor.inertialPanningX = this.editor.inertialPanningY = 0;
@@ -55,7 +70,6 @@ export class Cameras {
     const next = { ...this.value, ...structuredClone(changes) }; validateCamera(next);
     this.value = next; this.editor.fov = this.follow.fov = next.fieldOfView * Math.PI / 180;
     if (changes.target) this.editor.setTarget(vector(next.target));
-    this.editor.detachControl();
     this.editorControls(this.toolsEnabled);
     this.scene.activeCamera = next.active === "editor" ? this.editor : this.follow;
     this.update();

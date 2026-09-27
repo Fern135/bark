@@ -30,6 +30,35 @@ test("initial load, selections, layout-only moves, and remote-only changes stay 
   expect(calls).toHaveLength(0);
 });
 
+test("clicks request ideas immediately while preserving the provider cooldown", async () => {
+  const idea: ByteSuggestion = { category: "idea", message: "Build a Gem treasure hunt.", issueKey: "gem-hunt", line: null, blockId: null };
+  respond = async (body) => ({ revision: body.revision, suggestion: idea });
+  controller.requestNow("idea");
+  await tick(0);
+  expect(calls).toHaveLength(1);
+  expect(calls[0].intent).toBe("idea");
+  expect(controller.getSnapshot()).toEqual(idea);
+  expect(controller.getStatus()).toBe("idle");
+  controller.requestNow("review");
+  await tick(44_999);
+  expect(calls).toHaveLength(1);
+  await tick(1);
+  expect(calls[1].intent).toBe("review");
+});
+
+test("failed manual requests report unavailability and keep local fallback possible", async () => {
+  respond = async () => { throw new ByteReviewError(); };
+  controller.requestNow();
+  await tick(0);
+  expect(controller.getStatus()).toBe("unavailable");
+  expect(controller.getSnapshot()).toBeNull();
+  controller.requestNow();
+  await tick(119_999);
+  expect(calls).toHaveLength(1);
+  await tick(1);
+  expect(calls).toHaveLength(2);
+});
+
 test("debounces local edits and applies both request and display cooldowns", async () => {
   controller.update(input("edit", 1));
   await tick(4999); expect(calls).toHaveLength(0);

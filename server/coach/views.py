@@ -23,7 +23,7 @@ SUGGESTION_SCHEMA = {
         {"type": "null"},
         {"type": "object", "additionalProperties": False,
          "properties": {
-             "category": {"type": "string", "enum": ["bug", "improvement"]},
+             "category": {"type": "string", "enum": ["bug", "improvement", "idea"]},
              "message": {"type": "string", "maxLength": 320},
              "issueKey": {"type": "string", "maxLength": 80},
              "line": {"type": ["integer", "null"]},
@@ -41,7 +41,9 @@ def failure(status, retry=120):
 
 
 def valid_body(body):
-    if not isinstance(body, dict) or set(body) != {"revision", "snapshot", "dismissed"}:
+    if not isinstance(body, dict) or not {"revision", "snapshot", "dismissed"} <= set(body) or set(body) - {"revision", "snapshot", "dismissed", "intent"}:
+        return False
+    if body.get("intent", "review") not in ("review", "idea"):
         return False
     snapshot, dismissed = body["snapshot"], body["dismissed"]
     if not isinstance(body["revision"], str) or not 1 <= len(body["revision"]) <= 100:
@@ -78,7 +80,7 @@ def checked_suggestion(result, snapshot):
         return None
     if not isinstance(suggestion, dict) or set(suggestion) != {"category", "message", "issueKey", "line", "blockId"}:
         raise ValueError("schema")
-    if suggestion["category"] not in ("bug", "improvement"):
+    if suggestion["category"] not in ("bug", "improvement", "idea"):
         raise ValueError("category")
     message, key = suggestion["message"], suggestion["issueKey"]
     if not isinstance(message, str) or not 1 <= len(message.strip()) <= 320 or "\n" in message:
@@ -88,6 +90,10 @@ def checked_suggestion(result, snapshot):
     if not isinstance(key, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,79}", key):
         raise ValueError("issue")
     line, block = suggestion["line"], suggestion["blockId"]
+    if suggestion["category"] == "idea":
+        if line is not None or block is not None:
+            raise ValueError("idea_location")
+        return suggestion
     if line is not None and (type(line) is not int or not 1 <= line <= len(snapshot["python"].split("\n"))):
         raise ValueError("line")
     if snapshot["language"] == "blocks":
@@ -105,7 +111,7 @@ def call_openai(body):
         "model": settings.OPENAI_MODEL, "store": False,
         "reasoning": {"effort": "low"}, "max_output_tokens": 2000,
         "instructions": INSTRUCTIONS,
-        "input": json.dumps({"snapshot": body["snapshot"], "dismissed": body["dismissed"]}),
+        "input": json.dumps({"snapshot": body["snapshot"], "dismissed": body["dismissed"], "intent": body.get("intent", "review")}),
         "text": {"format": {"type": "json_schema", "name": "byte_hint", "strict": True, "schema": SUGGESTION_SCHEMA}},
     }
     request = urllib.request.Request(
@@ -152,8 +158,10 @@ def review(request):
     started = time.monotonic()
     try:
         suggestion = checked_suggestion(call_openai(body), body["snapshot"])
+        if suggestion and suggestion["category"] == "idea" and body.get("intent", "review") != "idea":
+            suggestion = None
         if suggestion:
-            target = suggestion["blockId"] or body["snapshot"]["python"].split("\n")[suggestion["line"] - 1].strip()[:400]
+            target = "" if suggestion["category"] == "idea" else suggestion["blockId"] or body["snapshot"]["python"].split("\n")[suggestion["line"] - 1].strip()[:400]
             if any(item["issueKey"] == suggestion["issueKey"] or (target and item["target"] == target) for item in body["dismissed"]):
                 suggestion = None
         response = JsonResponse({"revision": body["revision"], "suggestion": suggestion})

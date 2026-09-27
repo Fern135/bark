@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import type { ByteRequest } from "../src/lib/byte-hints";
 
 async function open(page: Page) {
+  // Keep this merge regression test silent and never call the paid voice service.
+  await page.addInitScript(() => localStorage.setItem("bark:byte-audio", "off"));
   await page.route("**/api/auth/me/", (route) => route.fulfill({ json: { user: { user_id: "byte-test", username: "Builder", email: "builder@example.test" } } }));
   await page.route("**/api/auth/csrf/", (route) => route.fulfill({ json: {} }));
   let revision = 0;
@@ -13,7 +15,7 @@ async function open(page: Page) {
   await page.goto("/editor");
   await expect(page.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Code", exact: true }).click();
-  await expect(page.getByRole("checkbox", { name: "Byte hints" })).toBeChecked();
+  await expect(page.locator("[data-byte-assistant]")).toBeVisible();
 }
 
 async function python(page: Page) {
@@ -32,23 +34,29 @@ test("Python hints debounce, preserve focus, dismiss, fit mobile and remember th
   const code = page.locator(".cm-content");
   await code.fill("from bark import game\n@game.on_start\nasync def start():\n    game.wait(1)");
   await page.waitForTimeout(3000); expect(requests).toHaveLength(0);
-  await expect(page.getByRole("region", { name: "Byte suggestion" })).toBeVisible({ timeout: 15_000 });
+  await expect.poll(() => requests.length, { timeout: 15_000 }).toBe(1);
   await expect(code).toBeFocused();
+  const byte = page.locator("[data-byte-assistant]");
+  await byte.getByRole("button", { name: /Byte assistant/ }).click();
+  await expect(byte.getByRole("status")).toContainText("Add await before game.wait(1)");
   expect(requests).toHaveLength(1);
   expect(requests[0].snapshot.language).toBe("python");
   expect(requests[0].snapshot.python).toContain("game.wait(1)");
   await page.screenshot({ path: "test-results/byte-desktop.png" });
   await page.setViewportSize({ width: 390, height: 844 });
-  const card = await page.getByRole("region", { name: "Byte suggestion" }).boundingBox();
+  const card = await byte.getByRole("status").boundingBox();
   expect(card!.x).toBeGreaterThanOrEqual(0); expect(card!.x + card!.width).toBeLessThanOrEqual(390);
   await page.screenshot({ path: "test-results/byte-mobile.png" });
-  await page.getByRole("button", { name: "Dismiss Byte suggestion" }).focus();
+  await byte.getByRole("button", { name: "Dismiss Byte’s tip" }).focus();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("region", { name: "Byte suggestion" })).toHaveCount(0);
-  await page.getByRole("checkbox", { name: "Byte hints" }).uncheck();
+  await expect(byte.getByRole("status")).toHaveCount(0);
+  await expect(byte.getByRole("button", { name: /Byte assistant/ })).toBeFocused();
+  await byte.getByRole("button", { name: /Byte assistant/ }).click();
+  await byte.getByRole("button", { name: "Turn off AI tips" }).click();
   await page.goto("/editor");
   await page.getByRole("button", { name: "Code", exact: true }).click();
-  await expect(page.getByRole("checkbox", { name: "Byte hints" })).not.toBeChecked();
+  await page.locator("[data-byte-assistant]").getByRole("button", { name: /Byte assistant/ }).click();
+  await expect(page.getByRole("button", { name: "Turn on AI tips" })).toBeVisible();
 });
 
 test("Blocks load and root movement are quiet; changed text supplies block context", async ({ page }) => {
@@ -87,7 +95,10 @@ test("late response is discarded after editing and disabling stops future reques
   await expect.poll(() => !!body, { timeout: 15_000 }).toBe(true);
   await page.locator(".cm-content").fill("print('second')");
   release();
-  await page.getByRole("checkbox", { name: "Byte hints" }).uncheck();
+  const byte = page.locator("[data-byte-assistant]");
+  await byte.getByRole("button", { name: /Byte assistant/ }).click();
+  await byte.getByRole("button", { name: "Turn off AI tips" }).click();
   await page.waitForTimeout(1000);
-  await expect(page.getByRole("region", { name: "Byte suggestion" })).toHaveCount(0);
+  await expect(byte.getByRole("status")).not.toContainText("Old advice");
+  await expect(byte.getByRole("status")).toContainText("AI tips are off");
 });

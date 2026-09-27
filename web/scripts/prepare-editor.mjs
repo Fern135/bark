@@ -15,6 +15,9 @@ for (const name of ["engine", "scripting"]) {
 }
 const target = resolve(web, "public/runtime");
 await mkdir(target, { recursive: true });
+for (const name of ["rive.wasm", "rive_fallback.wasm"]) {
+  await cp(resolve(web, "node_modules/@rive-app/canvas", name), resolve(target, name));
+}
 await cp(
   resolve(root, "scripting/public/pyodide"),
   resolve(target, "pyodide"),

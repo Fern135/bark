@@ -44,6 +44,22 @@ class ReviewTests(IsolatedTestCase):
         self.assertIsNone(self.post().json()["suggestion"])
 
     @patch("coach.views.call_openai")
+    def test_manual_idea_has_no_code_location(self, provider):
+        idea = {"category": "idea", "message": "Make the Gem sparkle when Byte collects it.", "issueKey": "gem-quest", "line": None, "blockId": None}
+        provider.return_value = {"suggestion": idea}
+        body = {**BODY, "intent": "idea"}
+        self.assertEqual(self.post(body).json()["suggestion"], idea)
+        provider.assert_called_once_with(body)
+        for changes in ({"line": 1}, {"blockId": "b1"}):
+            with self.assertRaises(ValueError):
+                checked_suggestion({"suggestion": {**idea, **changes}}, BODY["snapshot"])
+        self.assertFalse(valid_body({**BODY, "intent": "unsupported"}))
+
+    @patch("coach.views.call_openai", return_value={"suggestion": {"category": "idea", "message": "Build a treasure hunt.", "issueKey": "treasure-hunt", "line": None, "blockId": None}})
+    def test_automatic_review_does_not_interrupt_with_ideas(self, provider):
+        self.assertIsNone(self.post().json()["suggestion"])
+
+    @patch("coach.views.call_openai")
     def test_authentication_and_csrf(self, provider):
         self.assertEqual(self.post(client=Client()).status_code, 401)
         csrf = Client(enforce_csrf_checks=True)

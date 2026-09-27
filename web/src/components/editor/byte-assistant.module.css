@@ -1,0 +1,20 @@
+.assistant { aspect-ratio: 5 / 3; }
+.character { position:relative; display:block; width:100%; height:100%; padding:0; border:0; background:transparent; overflow:hidden; cursor:pointer; }
+.character:focus-visible { outline: 2px solid #087dff; outline-offset: -2px; border-radius: 12px; }
+.canvas { display: block; width: 100%; height: 100%; }
+.fallback { object-fit: contain; object-position: bottom; }
+.bubble { position:absolute; right:8px; bottom:calc(100% + 12px); width:290px; max-width:calc(100vw - 48px); padding:16px 30px 14px 17px; border:2px solid #bbdcf7; border-radius:18px 18px 5px 18px; background:#fff; box-shadow:0 6px 22px #16366520; color:#172752; font-size:13px; line-height:1.5; text-align:left; }
+.bubble::after { content:""; position:absolute; bottom:-9px; right:28px; width:14px; height:14px; transform:rotate(45deg); background:white; border-right:2px solid #bbdcf7; border-bottom:2px solid #bbdcf7; }
+.bubble strong { color:#096fc1; font-size:14px; font-weight:900; }
+.bubble p { margin:7px 0 0; overflow-wrap:anywhere; }
+.close { position:absolute; top:7px; right:7px; border:0; background:#eff6ff; border-radius:50%; width:24px; height:24px; color:#526990; cursor:pointer; font-size:19px; }
+.next { display:block; margin-top:10px; padding:0; color:#087aca; font:inherit; font-weight:800; border:0; background:none; cursor:pointer; }
+.source { display:block; margin-top:9px; font-size:10px; color:#6b7894; }
+.preference { display:block; border:0; padding:0; background:none; color:#6b7894; font:inherit; font-size:10px; margin-top:7px; cursor:pointer; text-decoration:underline; }
+.audioControls { display:flex; align-items:center; gap:10px; margin-top:12px; flex-wrap:wrap; }
+.audioToggle { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border:1px solid #cce4fb; border-radius:9px; background:#edf7ff; color:#086dc0; font:inherit; font-size:11px; font-weight:800; cursor:pointer; }
+.audioToggle[aria-pressed="false"] { background:#f4f6fa; color:#5c6c86; border-color:#dde4ed; }
+.replay { padding:6px 0; border:0; background:none; color:#087aca; font:inherit; font-size:11px; cursor:pointer; }
+.replay:disabled { color:#6b7894; cursor:wait; }
+.audioToggle:focus-visible, .replay:focus-visible { outline:2px solid #087dff; outline-offset:3px; }
+@media (max-width:600px) { .bubble { width:255px; right:0; font-size:12px; padding:13px 28px 13px 14px; } }

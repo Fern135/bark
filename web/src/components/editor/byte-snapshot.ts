@@ -43,7 +43,7 @@ export function byteKey(game: Game): string {
   return canonical({ script: semanticScript(game.script), context: byteContext(game) });
 }
 
-export function buildByteSnapshot(game: Game): ByteSnapshot | null {
+export function buildByteSnapshot(game: Game, allowEmpty = false): ByteSnapshot | null {
   if (new TextEncoder().encode(byteKey(game)).length > 64 * 1024) return null;
   const choices = choicesFor(game.project);
   const compilation = game.script.language === "blocks" ? compileBlocks(game.script, choices) : compilePython(game.script);
@@ -57,6 +57,6 @@ export function buildByteSnapshot(game: Game): ByteSnapshot | null {
       }
     } finally { workspace.dispose(); }
   }
-  if (!compilation.python.trim() && !compilation.diagnostics.length) return null;
+  if (!allowEmpty && !compilation.python.trim() && !compilation.diagnostics.length) return null;
   return { language: game.script.language, python: compilation.python, sourceMap: compilation.sourceMap, blocks, context: byteContext(game), diagnostics: compilation.diagnostics };
 }

@@ -397,6 +397,10 @@ revision as HTTP reads. See [the workspace protocol](ws/WORKSPACE-PROTOCOL.md).
 ## Byte coding hints
 
 `POST /api/coach/review/` requires the normal login JWT and CSRF verification.
+An optional `intent` is `review` (automatic checks, the default) or `idea`
+(the child clicks Byte for a project suggestion). An idea response uses category
+`idea` with `line: null` and `blockId: null`; bug and improvement locations retain
+the validation rules below. Automatic reviews never return creative ideas.
 It reviews unsaved snapshots, including signed-in local projects; no game ID or
 database write is involved. Request body (UTF-8 JSON, maximum 65,536 bytes):
 
@@ -422,9 +426,10 @@ accepts up to 20 `{issueKey, message, target}` summaries (also used for previous
 shown hints). Treat all input as data, including comments and block fields.
 
 Success: `{revision, suggestion: null}` or `{revision, suggestion: {category,
-message, issueKey, line, blockId}}`. Category is `bug` or `improvement`; message is
-at most 320 characters/two sentences. Python requires a valid line and null
-blockId. Blocks require an existing blockId; a non-null line must map to it.
+message, issueKey, line, blockId}}`. Category is `bug`, `improvement`, or `idea`;
+message is at most 320 characters/two sentences. For bugs and improvements,
+Python requires a valid line and null blockId. Blocks require an existing
+blockId; a non-null line must map to it. Ideas require both locations to be null.
 Clients discard stale revisions and render message as plain text.
 
 Errors: 400 malformed input, 401 no current account, 403 failed CSRF, 405 wrong
@@ -433,3 +438,42 @@ or invalid provider output. `Retry-After` is 45 seconds for the local budget and
 at least 120 seconds for provider failures. Requests reserve the Redis budget
 atomically before calling OpenAI, including calls that fail. No provider retries.
 Responses use `Cache-Control: no-store`; requests set OpenAI `store: false`.
+
+## Byte voice
+
+`POST /api/coach/speech/` uses the same login JWT and CSRF checks as coding hints.
+Send `{"text":"Make a treasure hunt with your Gem and Flag."}`. Text must be
+1–800 characters after trimming; the JSON body must be at most 8 KiB. Only the
+displayed tip is sent for speech, not the project or its source code.
+
+Success returns MP3 bytes (`audio/mpeg`, `Cache-Control: private, no-store`).
+The server calls [ElevenLabs text to speech](https://elevenlabs.io/docs/api-reference/text-to-speech/convert)
+using voice `MkTSSXNgnBULS6ek4pon`, model `eleven_flash_v2_5`, and output format
+`mp3_44100_128`. Voice/model selection and the API key are server-side only;
+clients cannot override them. Provider calls time out after 20 seconds, accept at
+most 2 MiB of audio, and do not retry automatically. Each account is limited to
+one concurrent request and six requests per minute, including failed calls.
+
+Errors: 400 malformed input, 401 no current account, 403 failed CSRF, 405 wrong
+method, 413 oversized body, 429 request limit (`Retry-After`), 503 provider/key
+unavailable (`Retry-After: 120`). Errors never include provider details or keys.
+
+Set `ELEVENLABS_API_KEY` in the root `.env` using a key with Text to Speech access
+and access to the selected voice. `ELEVENLABS_VOICE_ID` and `ELEVENLABS_MODEL_ID`
+have the defaults above; `BYTE_VOICE_ENABLED=0` disables the endpoint. These
+settings belong to Django; never use a `NEXT_PUBLIC_` key. After changing `.env`,
+recreate the server so Compose reloads it (a restart alone does not reload env):
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --no-deps server
+```
+
+Byte speaks after a user clicks him and an AI review finishes, or reads the local
+fallback if AI is unavailable. Sound is on initially; the **Sound on/off** toggle
+in his bubble remembers the browser's choice and silences speech. Byte's click
+does not play a synthesized sound effect; audio comes from ElevenLabs only.
+**Hear tip** replays the current message. Up to eight clips are cached in memory
+for replay, scoped to the current assistant/account. Closing the bubble, switching
+editor tabs, hiding the browser tab, changing the tip, or muting cancels playback
+and discards stale responses. Speech needs a signed-in account; guests still get
+text tips. Missing credentials or blocked audio never prevent reading the bubble.

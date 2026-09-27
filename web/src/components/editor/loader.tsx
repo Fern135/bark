@@ -14,7 +14,7 @@ const Editor = dynamic(() => import("./editor"), { ssr: false, loading: () => <p
 
 function EditorEntry() {
   const params = useSearchParams();
-  const [request] = useState(() => ({ id: params.get("id"), draft: params.get("draft"), slug: params.get("game"), adopt: params.get("adopt") === "1" }));
+  const [request] = useState(() => ({ id: params.get("id"), draft: params.get("draft"), slug: params.get("game"), adopt: params.get("adopt") === "1", name: params.get("name"), setting: params.get("setting"), size: params.get("size"), sparkle: params.get("sparkle") }));
   const { user, loading, error: sessionError } = useSession();
   const [loaded, setLoaded] = useState<{ game: Game; seed: SaveSeed; warning: string; frameStarter: boolean }>();
   const mounted = useRef(false);
@@ -46,7 +46,19 @@ function EditorEntry() {
         const response = await fetch(gameFile(request.slug), { signal: abort.signal });
         if (!response.ok) throw new Error("We couldn’t load this world. Please try again.");
         game = await parseGame(await response.text(), { baseUrl: location.href, signal: abort.signal });
-      } else { const { starterGame } = await import("./catalog"); game = starterGame(); }
+      } else {
+        const { starterGame } = await import("./catalog"); game = starterGame();
+        game.project.name = request.name?.trim().slice(0, 80) || game.project.name;
+        if (request.setting === "sunset") { game.project.settings.background = "#fbd9cd"; game.project.settings.sunIntensity = 0.55; }
+        if (request.setting === "space") { game.project.settings.background = "#202147"; game.project.settings.sunIntensity = 0.25; }
+        const size = Number(request.size ?? 1);
+        const byte = game.project.entities.find((entity) => entity.id === "player");
+        if (byte && Number.isFinite(size) && size >= 0.7 && size <= 1.3) {
+          byte.transform.scale = { x: size, y: size, z: size };
+          byte.transform.position.y *= size;
+        }
+        if (request.sparkle === "false") game.project.entities = game.project.entities.filter((entity) => !entity.tags.includes("starter:gem"));
+      }
       if (abort.signal.aborted) return;
       let dirty = !saved && !request.slug;
       let revision = saved?.revision ?? null;
@@ -63,6 +75,7 @@ function EditorEntry() {
       }
       const url = new URL(location.href);
       url.searchParams.delete("adopt");
+      for (const option of ["name", "setting", "size", "sparkle"]) url.searchParams.delete(option);
       if (!request.id) url.searchParams.set("draft", id);
       window.history.replaceState(null, "", url);
       mounted.current = true;
