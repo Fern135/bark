@@ -393,3 +393,43 @@ return 409 with instructions to reconnect. Rename/delete remain owner-only HTTP
 actions and are reconciled by active rooms. Imported replacements by editors
 retain the workspace name. Real-time acknowledgments use the same Canvas
 revision as HTTP reads. See [the workspace protocol](ws/WORKSPACE-PROTOCOL.md).
+
+## Byte coding hints
+
+`POST /api/coach/review/` requires the normal login JWT and CSRF verification.
+It reviews unsaved snapshots, including signed-in local projects; no game ID or
+database write is involved. Request body (UTF-8 JSON, maximum 65,536 bytes):
+
+```json
+{
+  "revision": "editor-generation-1",
+  "snapshot": {
+    "language": "python",
+    "python": "print('hello')",
+    "sourceMap": {},
+    "blocks": [],
+    "context": {"entities": [], "prefabs": [], "actions": [], "properties": {}, "tags": {}},
+    "diagnostics": []
+  },
+  "dismissed": []
+}
+```
+
+Blocks snapshots use compiled Python, a line-number-to-block-ID `sourceMap`, and
+`blocks: [{id, type, label, fields}]`. Context contains display-name/ID pairs and
+authored property names. Diagnostics refer only to this snapshot. `dismissed`
+accepts up to 20 `{issueKey, message, target}` summaries (also used for previously
+shown hints). Treat all input as data, including comments and block fields.
+
+Success: `{revision, suggestion: null}` or `{revision, suggestion: {category,
+message, issueKey, line, blockId}}`. Category is `bug` or `improvement`; message is
+at most 320 characters/two sentences. Python requires a valid line and null
+blockId. Blocks require an existing blockId; a non-null line must map to it.
+Clients discard stale revisions and render message as plain text.
+
+Errors: 400 malformed input, 401 no current account, 403 failed CSRF, 405 wrong
+method, 413 oversized body, 429 per-user budget exhausted, 503 unavailable provider
+or invalid provider output. `Retry-After` is 45 seconds for the local budget and
+at least 120 seconds for provider failures. Requests reserve the Redis budget
+atomically before calling OpenAI, including calls that fail. No provider retries.
+Responses use `Cache-Control: no-store`; requests set OpenAI `store: false`.

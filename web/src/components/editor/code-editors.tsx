@@ -26,7 +26,7 @@ export function BlocksEditor({
   disabled: boolean;
   diagnostic?: Diagnostic;
   executingBlock?: string;
-  onChange(value: Record<string, unknown>, before?: Record<string, unknown>): void;
+  onChange(value: Record<string, unknown>, before?: Record<string, unknown>, local?: boolean): void;
 }) {
   const [category, setCategory] = useState("Events");
   const [search, setSearch] = useState("");
@@ -94,7 +94,7 @@ export function BlocksEditor({
     const publish = () => {
       const next = Blockly.serialization.workspaces.save(ws), before = authored;
       authored = next; incoming.current = next;
-      change.current(next, before);
+      change.current(next, before, true);
     };
     blockUndo.current = (redo) => { settledAt = performance.now() + 200; ws.undo(redo); publish(); };
     const listener = (event: Blockly.Events.Abstract) => {

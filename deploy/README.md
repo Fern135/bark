@@ -106,6 +106,17 @@ mode 0600 to `/etc/bark/production.env`, and refuses to overwrite that file. Kee
 private off-machine copy. Do not put this file in the repository. All operators need
 SSH plus sudo; do not expose Docker's socket/API to the internet.
 
+For Byte coding hints, add `OPENAI_API_KEY` to `/etc/bark/production.env` using a
+private editor; keep its existing 0600 permissions. Optional settings are
+`BYTE_HINTS_ENABLED=1` and `OPENAI_MODEL=gpt-5.4-mini-2026-03-17`. Recreate the Django
+`server` container after changing these settings. The key is injected only into
+Django in production. Django joins a separate `coach_egress` network for outbound
+HTTPS; no additional ports are published, and web/ws/database/Redis stay internal.
+An absent key or `BYTE_HINTS_ENABLED=0` disables reviews without affecting editing
+or readiness. The Redis budget admits one review per account per 45 seconds across
+workers/tabs. Provider failures back off without an editor popup. Logs contain
+latency, token counts and error categories, never submitted source or credentials.
+
 `bootstrap.sh` installs Docker Engine/Compose from Docker's Ubuntu repository, the
 OCI CLI, automatic Ubuntu security updates, and a host firewall. It is intended for
 a **fresh** VM. On the recognized OCI image it removes the legacy inbound SSH

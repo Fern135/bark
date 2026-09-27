@@ -1,0 +1,18 @@
+.byte { position: absolute; right: 14px; bottom: -8px; z-index: 5; display: flex; align-items: flex-end; gap: 6px; max-width: calc(100% - 28px); pointer-events: none; }
+.mascot { width: 132px; height: 132px; object-fit: contain; flex-shrink: 0; filter: drop-shadow(0 4px 6px #1c294110); }
+.card { position: relative; width: 300px; max-width: 100%; margin-bottom: 32px; padding: 14px 34px 14px 16px; border: 1px solid #dbe5f1; border-radius: 17px 17px 4px 17px; background: #fff; color: #292966; box-shadow: 0 5px 20px #29396b18; pointer-events: auto; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.card strong { font-size: 12px; color: #7677aa; }
+.card p { margin: 5px 0 0; }
+.card button { position: absolute; right: 4px; top: 4px; width: 30px; height: 30px; border: 0; border-radius: 50%; color: #7677aa; background: transparent; font-size: 22px; cursor: pointer; }
+.card button:hover { background: #edf2f8; }
+.card button:focus-visible, .toggle input:focus-visible { outline: 2px solid #087cf0; outline-offset: 2px; }
+.toggle { flex-shrink: 0; display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 5px 12px; padding: 6px 16px; color: #7677aa; background: #fff; border-radius: 14px 14px 0 0; font-size: 11px; }
+.toggle label { display: flex; align-items: center; gap: 6px; color: #292966; font-size: 12px; cursor: pointer; }
+.toggle input { accent-color: #087cf0; }
+@media (max-width: 600px) {
+  .byte { right: 6px; max-width: calc(100% - 12px); gap: 0; }
+  .mascot { width: 70px; height: 70px; }
+  .byte > div { min-width: 0; }
+  .card { width: 260px; margin-bottom: 25px; font-size: 12px; padding: 10px 30px 10px 12px; }
+  .toggle { padding: 5px 10px; }
+}
