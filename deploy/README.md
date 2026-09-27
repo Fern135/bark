@@ -3,7 +3,8 @@
 **Active deployment target: Oracle.** The owner reports that the account upgrade
 has completed and selected Oracle again. Reuse the existing Chicago network,
 backup bucket and notification topic. The OVH cart was never submitted.
-The owner selected `bark.164-152-22-118.sslip.io` as the automatic free hostname.
+The production hostname is `www.barkcade.club`, pointing to `164.152.22.118`.
+The initial deployment used `bark.164-152-22-118.sslip.io`.
 
 This deploys the existing app on one Ubuntu 24.04 ARM64 VM (2 OCPUs, 12 GB RAM,
 100 GB boot disk). PostgreSQL 17 stores accounts, projects, embedded assets and
@@ -56,7 +57,9 @@ Production account recovery is deliberately disabled, including direct API reque
    Notifications supports general IAM variables, not `target.topic.id`; isolate
    the topic by compartment and grant only message publication there. The VM uses
    instance principals, so no OCI API key is copied into the app.
-7. Register an available name on DuckDNS and point it to the VM's IPv4. Update it
+7. Point a custom domain's A record to the VM's public IPv4 (for this deployment,
+   `www.barkcade.club` → `164.152.22.118`). Alternatively, register an available
+   name on DuckDNS and point it to the VM's IPv4. Update it
    when replacing the VM. Never commit the DuckDNS token. Confirm public DNS before
    starting Caddy. `bark-yourname.duckdns.org` below is an example, not a reserved name.
    Alternatively use `bark.DASH-SEPARATED-PUBLIC-IP.sslip.io`, which resolves to the
@@ -105,6 +108,15 @@ sudo python3 deploy/bark.py init \
 mode 0600 to `/etc/bark/production.env`, and refuses to overwrite that file. Keep a
 private off-machine copy. Do not put this file in the repository. All operators need
 SSH plus sudo; do not expose Docker's socket/API to the internet.
+
+`SITE_DOMAIN` in `/etc/bark/production.env` is the single source for the HTTPS
+hostname, Django allowed hosts and CSRF/CORS origins, frontend URL, and WebSocket
+allowed origins. To change domains, verify public DNS first, preserve a private
+copy of the existing environment file, update only `SITE_DOMAIN`, and recreate
+the production containers with the active release SHA. Caddy obtains the new
+certificate automatically. Verify HTTPS, login, and WebSocket connections on the
+new hostname. Cookies and local browser settings belong to each hostname, so
+users must sign in again after moving domains.
 
 For Byte coding hints, add `OPENAI_API_KEY` to `/etc/bark/production.env` using a
 private editor; keep its existing 0600 permissions. Optional settings are
