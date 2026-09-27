@@ -62,9 +62,15 @@ class OperationsTests(unittest.TestCase):
         self.assertNotIn('built', bark.read_state())
 
     def test_hostname_rejects_urls_ports_and_interpolation(self):
-        for value in ('https://test.duckdns.org', 'test.duckdns.org:80', '$(whoami).duckdns.org', '*.duckdns.org'):
+        for value in ('https://test.duckdns.org', 'test.duckdns.org:80', '$(whoami).duckdns.org', '*.duckdns.org',
+                      'bark.127-0-0-1.sslip.io', 'bark.10-0-0-1.sslip.io', 'bark.999-1-1-1.sslip.io',
+                      'bark.164-152-22-118.sslip.io.evil.test'):
             with self.assertRaises(ValueError):
                 bark.validate_domain(value)
+
+    def test_hostname_accepts_public_automatic_dns_and_duckdns(self):
+        bark.validate_domain('bark.164-152-22-118.sslip.io')
+        bark.validate_domain('bark-tree.duckdns.org')
 
     def test_failed_backup_prevents_migration_and_preserves_pending_state(self):
         bark.save_state({'built': self.prod.sha, 'active': 'b' * 40})

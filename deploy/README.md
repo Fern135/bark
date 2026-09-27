@@ -3,10 +3,11 @@
 **Active deployment target: Oracle.** The owner reports that the account upgrade
 has completed and selected Oracle again. Reuse the existing Chicago network,
 backup bucket and notification topic. The OVH cart was never submitted.
+The owner selected `bark.164-152-22-118.sslip.io` as the automatic free hostname.
 
 This deploys the existing app on one Ubuntu 24.04 ARM64 VM (2 OCPUs, 12 GB RAM,
 100 GB boot disk). PostgreSQL 17 stores accounts, projects, embedded assets and
-collaboration state. Redis is disposable. Caddy serves HTTPS on a DuckDNS name;
+collaboration state. Redis is disposable. Caddy serves HTTPS on the configured name;
 Nginx retains the app's routing and rate limits. Game execution stays in the browser.
 
 Only `docker-compose.prod.yml` is used in production. Do **not** combine it with
@@ -55,6 +56,9 @@ Production account recovery is deliberately disabled, including direct API reque
 7. Register an available name on DuckDNS and point it to the VM's IPv4. Update it
    when replacing the VM. Never commit the DuckDNS token. Confirm public DNS before
    starting Caddy. `bark-yourname.duckdns.org` below is an example, not a reserved name.
+   Alternatively use `bark.DASH-SEPARATED-PUBLIC-IP.sslip.io`, which resolves to the
+   embedded public IPv4 without registration. A replacement VM with a different IP
+   requires a new hostname and exact host/origin settings, so existing links change.
 
 Oracle currently documents 2 OCPUs/12 GB and 200 GB combined boot/block storage for
 Always Free; availability and idle reclamation apply. Check the Console's eligibility,
@@ -70,6 +74,7 @@ the dynamic group's single-instance match. Do not grant access to all buckets or
 Sources: [Oracle free limits](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm),
 [instance principals](https://docs.oracle.com/en-us/iaas/Content/Identity/Tasks/callingservicesfrominstances.htm),
 [DuckDNS](https://www.duckdns.org/about.jsp),
+[automatic DNS and TLS](https://sslip.io/),
 [Caddy HTTPS](https://caddyserver.com/docs/automatic-https).
 
 ## 2. Initialize the VM

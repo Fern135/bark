@@ -8,6 +8,7 @@ import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -56,8 +57,14 @@ def read_env(path=ENV_FILE):
 
 
 def validate_domain(domain):
-    if not re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.duckdns\.org', domain):
-        raise ValueError('Use your registered lowercase DuckDNS hostname')
+    if re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.duckdns\.org', domain):
+        return
+    automatic = re.fullmatch(r'bark\.([0-9]{1,3}(?:-[0-9]{1,3}){3})\.sslip\.io', domain)
+    if automatic:
+        address = ipaddress.IPv4Address(automatic[1].replace('-', '.'))
+        if address.is_global:
+            return
+    raise ValueError('Use a registered DuckDNS hostname or bark.PUBLIC-IP.sslip.io with dash-separated IPv4')
 
 
 def release_sha(value):
