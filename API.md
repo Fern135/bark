@@ -388,11 +388,12 @@ receive 404; a game UUID is not an invitation.
 | `POST /api/canvas/workspaces/join/` | Signed-in user explicitly redeems `{code}`; repeated joins are idempotent. Limited to 20 attempts/minute/account. |
 | `DELETE /api/canvas/games/<id>/members/<user>/` | Owner removes an editor, or an editor leaves. The owner cannot be removed. |
 
-Shared content is saved through protocol v2 at `/ws/`; old HTTP content writes
+Shared content is saved through protocol v3 at `/ws/`; old HTTP content writes
 return 409 with instructions to reconnect. Rename/delete remain owner-only HTTP
 actions and are reconciled by active rooms. Imported replacements by editors
 retain the workspace name. Real-time acknowledgments use the same Canvas
 revision as HTTP reads. See [the workspace protocol](ws/WORKSPACE-PROTOCOL.md).
+
 ## Byte coding hints
 
 `POST /api/coach/review/` requires the normal login JWT and CSRF verification.

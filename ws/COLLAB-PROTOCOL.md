@@ -42,7 +42,7 @@ document-level lock (block id `"*"`), which is rarely contended.
 { "type": "join", "doc": "<uuid>", "have": 41 }          // open: "have" enables op replay instead of a snapshot
 { "type": "lock",   "blockId": "b7", "nonce": 3 }
 { "type": "unlock", "blockId": "b7" }
-{ "type": "commit", "base": 41, "ops": [ ... ], "hash": "<sha256 of resulting workspace>", "nonce": 4 }
+{ "type": "commit", "base": 41, "ops": [ ... ], "nonce": 4 }   // "hash" optional, see below
 { "type": "presence", "blockId": "b7" }                  // ephemeral, never persisted; blockId optional
 { "type": "heartbeat" }                                  // renews this connection's locks
 ```
@@ -107,7 +107,21 @@ Three rules keep this small enough to trust:
    `lastAcked` to the post-apply JSON, so its next diff is empty.
 
 Apply order within one commit is the array order. The client emits:
-deletes, detaches, creates, attaches, replaces, moves, variable ops.
+
+    detach -> delete -> create -> attach -> replace -> move -> variable ops
+
+The order is load-bearing, not cosmetic:
+
+- **detach before delete**, or a block dragged out of a subtree the same edit deletes would be
+  destroyed along with its old parent.
+- **detach before attach**, so every slot is free when the attach phase runs and two blocks can
+  swap places without a transient collision.
+- **create before attach**, so the target exists; attaches are sorted parent-first.
+- **replace last**, once the structure already matches. That is what makes it safe to send a
+  whole subtree: every id the replacement carries is already sitting where it expects.
+
+A new subtree is sent with any descendant that already exists elsewhere stripped out; those
+keep their identity and arrive via `attach` instead, so no id is ever created twice.
 
 ## Locks
 
@@ -157,9 +171,26 @@ Server-side rejection is the backstop, not the mechanism.
   but it is always at a `rev` the snapshot already includes.
 - A gap (`rev > mine + 1`) means the client missed one: re-`join` with
   `have = <last applied rev>`.
-- `hash` is `sha256` over the canonical JSON of the resulting workspace. Clients compare
-  after applying; a mismatch means divergence, and the only correct response is to re-join
-  for a fresh snapshot. This is the cheap divergence detector — keep it.
+- `hash` is `sha256` over the canonical JSON of the resulting workspace — sorted keys, compact
+  separators, `ensure_ascii=False`. Clients compare after applying; a mismatch means
+  divergence, and the only correct response is to re-join for a fresh snapshot. This is the
+  cheap divergence detector — keep it.
+
+A `commit` may carry a `hash` too, and the reference client **does not** send one: computing
+it means awaiting `crypto.subtle` on the path of every keystroke, and the server hashes each
+`patch` anyway. Drift is therefore detected in the server→client direction, where being
+asynchronous costs nothing. A client that does send one gets a server-side warning log on
+mismatch, which is useful while the two diff implementations are still settling.
+
+Two normalisation rules exist purely so that hash can be trusted. Both sides implement them,
+and breaking either makes every commit look like divergence:
+
+- **An emptied connection is removed, not left as `{}`.** Blockly's own serializer omits a slot
+  that holds nothing, so a `detach` that left `"next": {}` behind would hash differently from
+  the same workspace re-serialised by the editor. An `inputs` map that becomes empty goes too.
+  A slot still holding a shadow is content and stays.
+- **`x` and `y` are integers.** The server coerces them, so a client that sent `30.5` would
+  hash `30.5` against the server's `30` forever. Round before sending.
 - `join` with `have` replays ops when they are still retained, otherwise the server sends
   a full snapshot. Either way the client ends at the server's `rev`.
 

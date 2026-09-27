@@ -24,3 +24,35 @@ web/playwright-report/
 .DS_Store
 .idea/
 .vscode/
+
+# Node
+# Patterns are intentionally unanchored so they match at any depth: engine/, scripting/ and
+# web/ each carry their own .gitignore, but those are tracked per branch and vanish on a
+# branch that predates the package. These root rules apply on every branch.
+node_modules/
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build output
+dist/
+dist-test/
+dist-playground/
+build/
+.vite/
+web/.next/
+web/out/
+engine/.validation/
+
+# Generated runtime assets, copied in by postinstall and scripts/copy-game-assets.mjs
+scripting/public/pyodide/
+web/public/pyodide/
+web/public/havok/
+web/public/scripting/
+
+# Test output
+test-results/
+playwright-report/
+blob-report/
+coverage/
