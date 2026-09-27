@@ -475,7 +475,6 @@ onChange={(source, before) => {
   if (editor.activeScript.language === "python")
     editor.script({ ...editor.activeScript, source }, before ? { ...editor.activeScript, source: before } : undefined, true, editor.scriptId);
 }}
-                    }}
                   />
                 ))}
             </div>
