@@ -76,7 +76,8 @@ class RedisBus:
     async def start(self) -> None:
         import redis.asyncio as redis  # imported here so LocalBus needs no redis install
 
-        self._client = redis.from_url(self._url, encoding="utf-8", decode_responses=True)
+        self._client = redis.from_url(self._url, encoding="utf-8", decode_responses=True,
+                                      socket_connect_timeout=3, socket_timeout=3)
         await self._client.ping()
         self._pubsub = self._client.pubsub(ignore_subscribe_messages=True)
         self._reader = asyncio.create_task(self._read(), name="collab-bus-reader")

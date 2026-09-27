@@ -1,0 +1,11 @@
+[Unit]
+Description=Bark nightly PostgreSQL backup to OCI
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+UMask=0077
+WorkingDirectory=/opt/bark/app
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/python3 /opt/bark/app/deploy/bark.py backup

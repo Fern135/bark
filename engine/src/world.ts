@@ -38,6 +38,7 @@ export class RuntimeWorld implements World {
   private observers: (() => void)[] = [];
   beforeMutation: (id: string, changes?: EntityChanges) => void = () => {};
   private epoch = 0;
+  private editorPreview: { id: string; before: Transform; cancel(): void } | null = null;
   readonly transforms: TransformAPI;
   readonly physics: PhysicsAPI;
   constructor(private readonly scene: Scene, private readonly plugin: HavokPlugin, private readonly assets: Assets,
@@ -168,7 +169,46 @@ export class RuntimeWorld implements World {
     for (const e of this.entries.values()) this.buildBody(e);
     this.changed();
   }
-  definitions(): EntityDefinition[] { this.active(); return [...this.entries.values()].map((e) => ({ ...structuredClone(e.definition), transform: pose(e.node) })); }
+  definitions(): EntityDefinition[] { this.active(); return [...this.entries.values()].map((e) => ({ ...structuredClone(e.definition), transform: this.editorPreview?.id === e.definition.id ? structuredClone(this.editorPreview.before) : pose(e.node) })); }
+  /** Editor-only presentation transaction. Physics and authored definitions change only on commit. */
+  beginEditorTransform(id: string) {
+    const e = this.find(id), before = pose(e.node);
+    check(!this.editorPreview && !this.scene.physicsEnabled, "Transform preview requires an idle editing world.");
+    let closed = false;
+    const restore = () => {
+      if (closed) return;
+      closed = true; this.editorPreview = null;
+      if (this.entries.get(id) !== e) return;
+      e.node.position.copyFrom(vector(before.position)); e.node.rotationQuaternion = quaternion(before.rotation); e.node.scaling.copyFrom(vector(before.scale)); e.node.computeWorldMatrix(true);
+    };
+    this.editorPreview = { id, before, cancel: restore };
+    return {
+      before,
+      preview: (world: Transform): Transform => {
+        check(!closed && this.entries.get(id) === e, "Transform preview has ended.");
+        const local = this.localPose(world, e.definition.parentId);
+        validateEntities(this.definitions().map((d) => d.id === id ? { ...d, transform: local } : d), this.assets.project);
+        e.node.position.copyFrom(vector(local.position)); e.node.rotationQuaternion = quaternion(local.rotation); e.node.scaling.copyFrom(vector(local.scale)); e.node.computeWorldMatrix(true);
+        return local;
+      },
+      cancel: restore,
+      commit: () => { if (closed) return before; const next = pose(e.node); restore(); this.transforms.set(id, next); return next; },
+    };
+  }
+  /** Visible subtree bounds expressed in the selected entity's unscaled local space. */
+  editorBounds(id: string): { min: Vector3; max: Vector3 } {
+    const e = this.find(id), inverse = Matrix.Invert(e.node.computeWorldMatrix(true));
+    let min = new Vector3(Infinity, Infinity, Infinity), max = min.negate();
+    for (const mesh of e.node.getChildMeshes()) {
+      if (!mesh.isEnabled() || !mesh.isVisible || !mesh.getTotalVertices()) continue;
+      mesh.computeWorldMatrix(true);
+      for (const corner of mesh.getBoundingInfo().boundingBox.vectorsWorld) {
+        const point = Vector3.TransformCoordinates(corner, inverse);
+        min = Vector3.Minimize(min, point); max = Vector3.Maximize(max, point);
+      }
+    }
+    return Number.isFinite(min.x) ? { min, max } : { min: new Vector3(-0.5, -0.5, -0.5), max: new Vector3(0.5, 0.5, 0.5) };
+  }
   get(id: string): EntitySnapshot { const e = this.find(id); return { ...structuredClone(e.definition), transform: pose(e.node), worldTransform: pose(e.node, true), effectiveEnabled: this.effective(e) }; }
   list(filter?: { tag?: string; type?: "box" | "sphere" | "capsule" | "model" | "group" }): EntitySnapshot[] {
     this.active(); return [...this.entries.keys()].map((id) => this.get(id)).filter((e) => (!filter?.tag || e.tags.includes(filter.tag)) && (!filter?.type || (e.visual?.kind ?? "group") === filter.type));
@@ -193,6 +233,7 @@ export class RuntimeWorld implements World {
     return this.insertSubtree(copies);
   }
   update(id: string, changes: EntityChanges): void {
+    this.editorPreview?.cancel();
     this.writable(); const e = this.find(id), current = this.get(id);
     const next = defineEntity({ ...current, ...changes, id, transform: { ...current.transform, ...changes.transform },
       collider: changes.collider === null ? null : changes.collider ? { ...current.collider, ...changes.collider } : current.collider,

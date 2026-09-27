@@ -1,0 +1,9 @@
+{
+    email {$ACME_EMAIL}
+    admin off
+}
+
+{$SITE_DOMAIN} {
+    # Nginx's real-IP handling trusts only this container's fixed edge-network IP.
+    reverse_proxy proxy:8080
+}

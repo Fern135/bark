@@ -1,0 +1,187 @@
+# Standalone file: never merge with the development Compose files.
+name: bark-production
+
+x-service: &service
+  restart: unless-stopped
+  platform: ${BARK_PLATFORM:-linux/arm64}
+  security_opt: [no-new-privileges:true]
+  logging:
+    driver: json-file
+    options: {max-size: 10m, max-file: "3"}
+
+x-health: &health
+  interval: 20s
+  timeout: 5s
+  retries: 5
+  start_period: 30s
+
+x-backend: &backend
+  POSTGRES_HOST: db
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: bark
+  POSTGRES_USER: bark
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?generate production secrets}
+  DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:?generate production secrets}
+  JWT_SECRET: ${JWT_SECRET:?generate production secrets}
+  JWT_ALGORITHM: HS256
+  JWT_ISSUER: bark-server
+  JWT_AUDIENCE: bark-web
+  JWT_ACCESS_COOKIE: access_token
+  JWT_COOKIE_SECURE: "1"
+  DJANGO_DEBUG: "0"
+  DJANGO_ALLOWED_HOSTS: ${SITE_DOMAIN:?set SITE_DOMAIN}
+  DJANGO_CSRF_TRUSTED_ORIGINS: https://${SITE_DOMAIN}
+  DJANGO_CORS_ALLOWED_ORIGINS: https://${SITE_DOMAIN}
+  DJANGO_TRUST_PROXY: "1"
+  DJANGO_SECURE_COOKIES: "1"
+  FRONTEND_URL: https://${SITE_DOMAIN}
+  DJANGO_CACHE_URL: redis://redis:6379/1
+  ACCOUNT_RECOVERY_ENABLED: "0"
+  DEMO_EMAIL: "0"
+  EMAIL_BACKEND: django.core.mail.backends.dummy.EmailBackend
+  DJANGO_MIGRATE_ON_START: "0"
+  RUN_TESTS_ON_START: "0"
+
+services:
+  caddy:
+    <<: *service
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?set certificate contact email}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    mem_limit: 256m
+    networks:
+      edge: {ipv4_address: 172.29.240.2}
+    depends_on:
+      proxy: {condition: service_healthy}
+
+  proxy:
+    <<: *service
+    image: bark-proxy:${BARK_RELEASE:?set release commit SHA}
+    build:
+      context: .
+      dockerfile: deploy/proxy.Dockerfile
+    volumes:
+      - django_static:/static:ro
+    cap_drop: [ALL]
+    mem_limit: 128m
+    healthcheck:
+      <<: *health
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1:8080/gateway-ready]
+    networks:
+      edge: {ipv4_address: 172.29.240.3}
+      internal: {}
+    depends_on:
+      web: {condition: service_healthy}
+      server: {condition: service_healthy}
+      ws: {condition: service_healthy}
+
+  web:
+    <<: *service
+    image: bark-web:${BARK_RELEASE}
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+      target: runner
+      args: {NEXT_PUBLIC_ACCOUNT_RECOVERY_ENABLED: "0"}
+    environment:
+      INTERNAL_API_URL: http://server:8000/api
+      PORT: "3000"
+    cap_drop: [ALL]
+    mem_limit: 2g
+    healthcheck:
+      <<: *health
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+    networks: [internal]
+
+  server:
+    <<: *service
+    image: bark-server:${BARK_RELEASE}
+    build: {context: ./server}
+    environment:
+      <<: *backend
+      DJANGO_WSGI_MODULE: server.wsgi
+      GUNICORN_WORKERS: "2"
+    volumes:
+      - django_static:/app/staticfiles
+    cap_drop: [ALL]
+    mem_limit: 1g
+    healthcheck:
+      <<: *health
+      test: [CMD, python, -c, "import urllib.request; r=urllib.request.Request('http://127.0.0.1:8000/health/ready/',headers={'Host':'server'}); urllib.request.urlopen(r,timeout=4)"]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    networks: [internal]
+
+  ws:
+    <<: *service
+    image: bark-ws:${BARK_RELEASE}
+    build:
+      context: .
+      dockerfile: ws/Dockerfile
+    environment:
+      <<: *backend
+      WS_ALLOWED_ORIGINS: https://${SITE_DOMAIN}
+      REDIS_URL: redis://redis:6379/0
+      WS_AUTO_MIGRATE: "0"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    mem_limit: 1g
+    healthcheck:
+      <<: *health
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health',timeout=4)"]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    networks: [internal]
+
+  db:
+    <<: *service
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: bark
+      POSTGRES_USER: bark
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    mem_limit: 2g
+    shm_size: 256m
+    healthcheck:
+      <<: *health
+      test: [CMD-SHELL, "pg_isready -U bark -d bark"]
+    networks: [internal]
+
+  redis:
+    <<: *service
+    image: redis:7-alpine
+    command: [redis-server, --save, "", --appendonly, "no", --maxmemory, 192mb, --maxmemory-policy, noeviction]
+    user: redis
+    read_only: true
+    tmpfs: [/data]
+    cap_drop: [ALL]
+    mem_limit: 256m
+    healthcheck:
+      <<: *health
+      test: [CMD, redis-cli, ping]
+    networks: [internal]
+
+networks:
+  edge:
+    ipam:
+      config: [{subnet: 172.29.240.0/29}]
+  internal:
+    internal: true
+
+volumes:
+  pgdata:
+  django_static:
+  caddy_data:
+  caddy_config:

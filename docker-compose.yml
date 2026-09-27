@@ -32,33 +32,15 @@ services:
   web:
     <<: *hardening
     build:
-      context: ./web
+      context: .
+      dockerfile: web/Dockerfile
       target: runner
-      # engine and scripting reach web only through these build contexts.
-      additional_contexts:
-        engine: service:engine
-        scripting: service:scripting
     environment:
       INTERNAL_API_URL: http://server:8000/api
       PORT: ${WEB_PORT:-3000}
     cap_drop: [ALL]
     networks:
       - internal
-
-  # ---- Build-only packages ----
-  # engine and scripting are browser libraries bundled into web's image. They never run as
-  # containers and join no network, so no other service can reach them.
-  engine:
-    build:
-      context: ./engine
-    scale: 0
-
-  scripting:
-    build:
-      context: ./scripting
-      additional_contexts:
-        engine: service:engine
-    scale: 0
 
   server:
     <<: *hardening
@@ -82,7 +64,8 @@ services:
   ws:
     <<: *hardening
     build:
-      context: ./ws
+      context: .
+      dockerfile: ws/Dockerfile
     env_file: .env
     environment:
       POSTGRES_HOST: db

@@ -13,6 +13,13 @@ server/staticfiles/
 server/media/
 db.sqlite3
 
+# Generated browser runtime
+.cache/
+web/public/runtime/
+web/public/community-runtime/
+web/test-results/
+web/playwright-report/
+
 # OS / editors
 .DS_Store
 .idea/

@@ -1,0 +1,1968 @@
+{
+  "version": 1,
+  "project": {
+    "version": 1,
+    "name": "Rainbow Rally",
+    "entities": [
+      {
+        "id": "player",
+        "name": "Little explorer",
+        "tags": [
+          "starter:player"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 1.03,
+            "z": -1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "player"
+        },
+        "collider": {
+          "shape": "capsule",
+          "size": {
+            "x": 1,
+            "y": 2,
+            "z": 1
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "dynamic",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0,
+          "friction": 0.5,
+          "rotationLocked": true
+        },
+        "properties": {},
+        "character": {
+          "speed": 7,
+          "jumpSpeed": 6,
+          "slopeLimit": 50,
+          "spawn": {
+            "position": {
+              "x": 0,
+              "y": 1.03,
+              "z": -1
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            }
+          }
+        },
+        "interaction": null
+      },
+      {
+        "id": "ground",
+        "name": "ground",
+        "tags": [
+          "ground"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -0.5,
+            "z": 11
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 18,
+            "y": 1,
+            "z": 32
+          },
+          "color": "#ABD9DB"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 18,
+            "y": 1,
+            "z": 32
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-earth",
+        "name": "island-earth",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -1.4,
+            "z": 11
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 18.3,
+            "y": 1.1,
+            "z": 32.3
+          },
+          "color": "#BBA685"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-0",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": -2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-1",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": -2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-2",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-3",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-4",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-5",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-6",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-7",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-8",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 14
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-9",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 14
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-10",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-11",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-12",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 22
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-13",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -7.6,
+            "y": 1.4700000000000002,
+            "z": 22
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "decor-14",
+        "name": "tree",
+        "tags": [
+          "starter:tree"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 7.6,
+            "y": 1.4700000000000002,
+            "z": 26
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.8,
+            "y": 0.8,
+            "z": 0.8
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "tree"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "checkpoint-path-0",
+        "name": "checkpoint-path-0",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.025,
+            "z": 3
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4,
+            "y": 0.05,
+            "z": 3
+          },
+          "color": "#F3ABBD"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-left-0",
+        "name": "gate-left-0",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -1.8,
+            "y": 1.5,
+            "z": 3
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#F3ABBD"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-right-0",
+        "name": "gate-right-0",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.8,
+            "y": 1.5,
+            "z": 3
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#F3ABBD"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-top-0",
+        "name": "gate-top-0",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 3,
+            "z": 3
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 3.85,
+            "y": 0.3,
+            "z": 0.3
+          },
+          "color": "#F3ABBD"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "checkpoint-path-1",
+        "name": "checkpoint-path-1",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -4,
+            "y": 0.025,
+            "z": 8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4,
+            "y": 0.05,
+            "z": 3
+          },
+          "color": "#EBC774"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-left-1",
+        "name": "gate-left-1",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -5.8,
+            "y": 1.5,
+            "z": 8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#EBC774"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-right-1",
+        "name": "gate-right-1",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -2.2,
+            "y": 1.5,
+            "z": 8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#EBC774"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-top-1",
+        "name": "gate-top-1",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -4,
+            "y": 3,
+            "z": 8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 3.85,
+            "y": 0.3,
+            "z": 0.3
+          },
+          "color": "#EBC774"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "checkpoint-path-2",
+        "name": "checkpoint-path-2",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 4,
+            "y": 0.025,
+            "z": 13
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4,
+            "y": 0.05,
+            "z": 3
+          },
+          "color": "#AADEA2"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-left-2",
+        "name": "gate-left-2",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 2.2,
+            "y": 1.5,
+            "z": 13
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#AADEA2"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-right-2",
+        "name": "gate-right-2",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 5.8,
+            "y": 1.5,
+            "z": 13
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#AADEA2"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-top-2",
+        "name": "gate-top-2",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 4,
+            "y": 3,
+            "z": 13
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 3.85,
+            "y": 0.3,
+            "z": 0.3
+          },
+          "color": "#AADEA2"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "checkpoint-path-3",
+        "name": "checkpoint-path-3",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -4,
+            "y": 0.025,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4,
+            "y": 0.05,
+            "z": 3
+          },
+          "color": "#91CFF0"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-left-3",
+        "name": "gate-left-3",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -5.8,
+            "y": 1.5,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#91CFF0"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-right-3",
+        "name": "gate-right-3",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -2.2,
+            "y": 1.5,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#91CFF0"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-top-3",
+        "name": "gate-top-3",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -4,
+            "y": 3,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 3.85,
+            "y": 0.3,
+            "z": 0.3
+          },
+          "color": "#91CFF0"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "checkpoint-path-4",
+        "name": "checkpoint-path-4",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.025,
+            "z": 24
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4,
+            "y": 0.05,
+            "z": 3
+          },
+          "color": "#C3B0EF"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-left-4",
+        "name": "gate-left-4",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -1.8,
+            "y": 1.5,
+            "z": 24
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#C3B0EF"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-right-4",
+        "name": "gate-right-4",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.8,
+            "y": 1.5,
+            "z": 24
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "color": "#C3B0EF"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 0.25,
+            "y": 3,
+            "z": 0.25
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "gate-top-4",
+        "name": "gate-top-4",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 3,
+            "z": 24
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 3.85,
+            "y": 0.3,
+            "z": 0.3
+          },
+          "color": "#C3B0EF"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-0",
+        "name": "Checkpoint 1",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.33000000000000007,
+            "z": 3
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-1",
+        "name": "Checkpoint 2",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -4,
+            "y": 0.33000000000000007,
+            "z": 8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-2",
+        "name": "Checkpoint 3",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 4,
+            "y": 0.33000000000000007,
+            "z": 13
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-3",
+        "name": "Checkpoint 4",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": -4,
+            "y": 0.33000000000000007,
+            "z": 18
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-4",
+        "name": "Checkpoint 5",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.33000000000000007,
+            "z": 24
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      }
+    ],
+    "assets": [
+      {
+        "id": "player",
+        "type": "model",
+        "url": "/models/starter/player.glb"
+      },
+      {
+        "id": "tree",
+        "type": "model",
+        "url": "/models/starter/tree.glb"
+      },
+      {
+        "id": "gem",
+        "type": "model",
+        "url": "/models/starter/gem.glb"
+      }
+    ],
+    "materials": [],
+    "prefabs": [],
+    "properties": {},
+    "settings": {
+      "background": "#DCEFFF",
+      "ambientIntensity": 0.65,
+      "sunIntensity": 0.8,
+      "shadows": true,
+      "resolutionScale": 1,
+      "maxDevicePixelRatio": 2,
+      "gravity": {
+        "x": 0,
+        "y": -9.81,
+        "z": 0
+      }
+    },
+    "cameras": {
+      "active": "follow",
+      "targetId": "player",
+      "target": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "offset": {
+        "x": 0,
+        "y": 9,
+        "z": -11
+      },
+      "fieldOfView": 60
+    },
+    "input": {
+      "forward": [
+        "KeyW",
+        "ArrowUp"
+      ],
+      "backward": [
+        "KeyS",
+        "ArrowDown"
+      ],
+      "left": [
+        "KeyA",
+        "ArrowLeft"
+      ],
+      "right": [
+        "KeyD",
+        "ArrowRight"
+      ],
+      "jump": [
+        "Space"
+      ],
+      "interact": [
+        "KeyE"
+      ],
+      "primary": [
+        "Mouse0"
+      ]
+    }
+  },
+  "script": {
+    "language": "python",
+    "source": "from bark import game\n\nplayer = game.entity(\"player\")\ngoals = [[0,3],[-4,8],[4,13],[-4,18],[0,24]]\ncollected = set()\nfinished = False\n\n@game.on_input(\"jump\")\nasync def jump(state):\n    if state.pressed:\n        await player.jump()\n\n@game.on_start\nasync def adventure():\n    global finished\n    await game.set_hud(\"progress\", \"Checkpoints\", \"0 / 5\")\n    await game.notify(\"Follow the checkpoints in order!\", 4)\n    while True:\n        right = await game.input(\"right\")\n        left = await game.input(\"left\")\n        forward = await game.input(\"forward\")\n        backward = await game.input(\"backward\")\n        await player.walk(int(right.held) - int(left.held), int(forward.held) - int(backward.held))\n        position = await player.position()\n        if position.y < -8:\n            await player.respawn()\n        if not finished:\n            await game.set_hud(\"time\", \"Time\", str(round(game.elapsed, 1)) + \"s\")\n            for index, goal in enumerate(goals):\n                if index in collected or index != len(collected):\n                    continue\n                if (position.x - goal[0]) ** 2 + (position.z - goal[1]) ** 2 < 1.5 ** 2 and -1 < position.y < 3:\n                    collected.add(index)\n                    await game.entity(\"goal-\" + str(index)).destroy()\n                    await game.set_hud(\"progress\", \"Checkpoints\", str(len(collected)) + \" / 5\")\n                    if len(collected) == len(goals):\n                        finished = True\n                        await game.set_hud(\"result\", \"Adventure\", \"Complete!\")\n                        await game.notify(\"You did it! Restart for another adventure.\", 12)\n                    else:\n                        await game.notify(\"Checkpoint reached!\", 2)\n        await game.next_frame()\n"
+  }
+}

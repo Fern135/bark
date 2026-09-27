@@ -9,10 +9,12 @@ component classes or JavaScript.
 | `button` | `Button`, `IconButton` | `variant`: primary, positive, accent, outline, subtle. `size`: default or small. `loading` disables activation. Icon buttons require `aria-label`. |
 | `panel` | `Panel` | Content with optional `title`, `description`, `headerAction`, and `footer`. |
 | `tabs` | `Tabs`, `TabItem` | Controlled `value` / `onValueChange`; `items` contain unique values, labels, content, optional icons and disabled flags. Supply an enabled value and a group `label`. |
-| `fields` | `TextInput`, `Select`, `Slider`, `Switch` | Native inputs with associated labels and standard element props. |
+| `fields` | `TextInput`, `PasswordInput`, `Select`, `Slider`, `Switch` | Native inputs with associated labels and standard element props. |
 | `icon` | `Icon`, `IconName` | Decorative SVGs; label the containing control instead. |
 
-`TextInput` supports text, search, and number types. `Select` accepts an `options`
+`TextInput` supports text, search, number, email, and password types, plus an optional
+`trailingAction`. `PasswordInput` reuses it with an accessible show/hide control;
+it accepts the same field props except `type` and `trailingAction`. `Select` accepts an `options`
 array and optional disabled placeholder. Both associate `description` and `error`
 text with the input and support caller-supplied IDs and descriptions.
 

@@ -1,0 +1,146 @@
+{
+  "player": {
+    "file": "player.glb",
+    "source": "platformer/character-oopi.glb",
+    "size": {
+      "x": 1.9135970120126917,
+      "y": 2,
+      "z": 1.327996334247917
+    }
+  },
+  "tree": {
+    "file": "tree.glb",
+    "source": "nature/tree_detailed.glb",
+    "size": {
+      "x": 2.288783574511583,
+      "y": 3.6,
+      "z": 2.057740908139119
+    }
+  },
+  "rock": {
+    "file": "rock.glb",
+    "source": "nature/rock_largeA.glb",
+    "size": {
+      "x": 3.323622919758478,
+      "y": 1.1,
+      "z": 4.299887927276532
+    }
+  },
+  "crate": {
+    "file": "crate.glb",
+    "source": "platformer/crate.glb",
+    "size": {
+      "x": 1.2,
+      "y": 1.2,
+      "z": 1.2
+    }
+  },
+  "gem": {
+    "file": "gem.glb",
+    "source": "platformer/jewel.glb",
+    "size": {
+      "x": 0.718804367263335,
+      "y": 0.8,
+      "z": 0.6225030043095221
+    }
+  },
+  "flag": {
+    "file": "flag.glb",
+    "source": "platformer/flag.glb",
+    "size": {
+      "x": 1.0352106196266828,
+      "y": 2.2,
+      "z": 0.27377773892438123
+    }
+  },
+  "platform": {
+    "file": "platform.glb",
+    "source": "nature/platform_stone.glb",
+    "size": {
+      "x": 5.413316172556702,
+      "y": 0.5,
+      "z": 4.387391586994481
+    }
+  },
+  "flower": {
+    "file": "flower.glb",
+    "source": "nature/flower_yellowC.glb",
+    "size": {
+      "x": 1.0222471080907407,
+      "y": 0.75,
+      "z": 1.0248625418950918
+    }
+  },
+  "bridge": {
+    "file": "bridge.glb",
+    "source": "nature/bridge_wood.glb",
+    "size": {
+      "x": 2.6,
+      "y": 1,
+      "z": 2.6
+    }
+  },
+  "bush": {
+    "file": "bush.glb",
+    "source": "nature/plant_bushDetailed.glb",
+    "size": {
+      "x": 1.5046417773862792,
+      "y": 0.9,
+      "z": 1.5046417773862792
+    }
+  },
+  "fence": {
+    "file": "fence.glb",
+    "source": "nature/fence_planks.glb",
+    "size": {
+      "x": 3.1881535171274855,
+      "y": 1.1,
+      "z": 0.305743922292526
+    }
+  },
+  "mushroom": {
+    "file": "mushroom.glb",
+    "source": "nature/mushroom_redGroup.glb",
+    "size": {
+      "x": 0.6458536887994635,
+      "y": 0.6,
+      "z": 0.6088832974034685
+    }
+  },
+  "pine": {
+    "file": "pine.glb",
+    "source": "nature/tree_pineRoundA.glb",
+    "size": {
+      "x": 1.6707460540447816,
+      "y": 3.7,
+      "z": 1.9292115290772236
+    }
+  },
+  "tent": {
+    "file": "tent.glb",
+    "source": "nature/tent_detailedOpen.glb",
+    "size": {
+      "x": 3.1184458240395987,
+      "y": 2,
+      "z": 2.3752037849285754
+    }
+  },
+  "sign": {
+    "file": "sign.glb",
+    "source": "nature/sign.glb",
+    "size": {
+      "x": 1.1008622197541162,
+      "y": 1.5,
+      "z": 0.25686784467078716
+    }
+  },
+  "robot": {
+    "file": "robot.glb",
+    "source": "platformer/character-oodi.glb",
+    "size": {
+      "x": 1.7222363649464911,
+      "y": 1.8,
+      "z": 1.2096885339034509
+    }
+  }
+}

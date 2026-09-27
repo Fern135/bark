@@ -4,24 +4,26 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, status
+from fastapi.responses import JSONResponse
 
-from . import config, db
+from . import config
 from .auth import AuthError, decode_token
-from .collab import bus, protocol, rooms, store
+from .collab import bus, protocol
+from .collab import workspaces as rooms
+from .collab.rooms import Connection
+from .collab.workspaces import OpError
+import time
 
 log = logging.getLogger("bark.ws")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await db.connect()
-    if config.AUTO_MIGRATE:
-        await store.ensure_schema()
     await bus.connect()
     yield
     await rooms.shutdown()
     await bus.disconnect()
-    await db.disconnect()
+
 
 
 # No docs/OpenAPI: this service only speaks websockets to the frontend.
@@ -29,11 +31,18 @@ app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None
 
 
 @app.get("/health", include_in_schema=False)
-async def health() -> dict:
-    async with db.pool().acquire() as conn:
-        await conn.fetchval("SELECT 1")
-    if not await bus.bus().healthy():
-        return {"status": "degraded", "bus": "unreachable"}
+async def health():
+    from asgiref.sync import sync_to_async
+    from django.db import connection
+    def check():
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+    try:
+        await sync_to_async(check)()
+        if not await bus.bus().healthy():
+            return JSONResponse({"status": "unavailable"}, status_code=503)
+    except Exception:
+        return JSONResponse({"status": "unavailable"}, status_code=503)
     return {"status": "ok"}
 
 
@@ -64,24 +73,32 @@ async def socket(websocket: WebSocket) -> None:
         return
 
     # Identity comes from the token and nowhere else; a user id in a client frame is ignored.
-    conn = rooms.Connection(websocket, claims["sub"])
+    conn = Connection(websocket, claims["sub"])
     conn.start()
-    conn.send(protocol.ready(conn.user_id))
+    conn.send({"type": "ready", "protocol": 2, "user": conn.user_id, "conn": conn.id})
 
     try:
         while True:
-            raw = await websocket.receive_text()
+            if time.time() >= claims["exp"]:
+                await websocket.close(code=1008)
+                return
+            raw = await asyncio.wait_for(websocket.receive_text(), timeout=max(0.01, claims["exp"] - time.time()))
             if len(raw.encode()) > config.MAX_MESSAGE_BYTES:
                 await websocket.close(code=status.WS_1009_MESSAGE_TOO_BIG)
                 return
             try:
-                message = protocol.parse_client_message(json.loads(raw))
+                message = json.loads(raw)
+                if not isinstance(message, dict):
+                    raise ValueError("Expected object")
+                protocol.check_depth(message)
             except (protocol.ProtocolError, ValueError) as exc:
                 code = getattr(exc, "code", "INVALID_OP")
                 conn.send(protocol.error(code, str(getattr(exc, "message", "Malformed frame."))))
                 continue
             try:
                 await rooms.handle(conn, message)
+            except (OpError, ValueError, KeyError) as exc:
+                conn.send({"type": "error", "code": getattr(exc, "code", "INVALID_OP"), "message": str(exc), "nonce": message.get("nonce")})
             except Exception:
                 # One bad frame must not take the socket down with it.
                 log.exception("collab: handler failed for user %s", conn.user_id)
@@ -91,6 +108,8 @@ async def socket(websocket: WebSocket) -> None:
                 log.warning("collab: send queue overflow for user %s; closing", conn.user_id)
                 await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
                 return
+    except asyncio.TimeoutError:
+        await websocket.close(code=1008)
     except WebSocketDisconnect:
         pass
     finally:

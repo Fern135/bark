@@ -1,6 +1,9 @@
 import type { SVGProps } from "react";
 
 const paths = {
+  sliders: "M4 7h16M4 17h16M8 4v6M16 14v6",
+  globe: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z",
+  trash: "M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7",
   play: "m8 4 12 8-12 8Z",
   upload: "M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5",
   plus: "M12 5v14M5 12h14",
@@ -14,6 +17,8 @@ const paths = {
   arrow: "M4 12h16m-6-6 6 6-6 6",
   undo: "M9 4 4 9l5 5M4 9h10a6 6 0 0 1 0 12",
   spark: "m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5Z",
+  eye: "M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0",
+  eyeOff: "m3 3 18 18M10.6 5.1Q11.3 5 12 5c6.5 0 10 7 10 7a19 19 0 0 1-3 4M6 6.4A20 20 0 0 0 2 12s3.5 7 10 7q2.3 0 4.2-.9M9.9 9.9a3 3 0 0 0 4.2 4.2",
 } satisfies Record<string, string>;
 
 export type IconName = keyof typeof paths;

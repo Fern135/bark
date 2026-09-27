@@ -1,0 +1,987 @@
+{
+  "version": 1,
+  "project": {
+    "version": 1,
+    "name": "Cloud Hop",
+    "entities": [
+      {
+        "id": "player",
+        "name": "Little explorer",
+        "tags": [
+          "starter:player"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 1.03,
+            "z": -1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "player"
+        },
+        "collider": {
+          "shape": "capsule",
+          "size": {
+            "x": 1,
+            "y": 2,
+            "z": 1
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "dynamic",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0,
+          "friction": 0.5,
+          "rotationLocked": true
+        },
+        "properties": {},
+        "character": {
+          "speed": 5,
+          "jumpSpeed": 6,
+          "slopeLimit": 50,
+          "spawn": {
+            "position": {
+              "x": 0,
+              "y": 1.03,
+              "z": -1
+            },
+            "rotation": {
+              "x": 0,
+              "y": 0,
+              "z": 0,
+              "w": 1
+            }
+          }
+        },
+        "interaction": null
+      },
+      {
+        "id": "ground-island-0",
+        "name": "ground-island-0",
+        "tags": [
+          "ground"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -0.45,
+            "z": 0
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "color": "#91CCAE"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-base-0",
+        "name": "island-base-0",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -1.2,
+            "z": 0
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4.4,
+            "y": 0.7,
+            "z": 3.1
+          },
+          "color": "#B59B7D"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-decor-0",
+        "name": "bush",
+        "tags": [
+          "starter:bush"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.8,
+            "y": 0.3225,
+            "z": 0
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.65,
+            "y": 0.65,
+            "z": 0.65
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "bush"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "ground-island-1",
+        "name": "ground-island-1",
+        "tags": [
+          "ground"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -0.45,
+            "z": 5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "color": "#91CCAE"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-base-1",
+        "name": "island-base-1",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -1.2,
+            "z": 5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4.4,
+            "y": 0.7,
+            "z": 3.1
+          },
+          "color": "#B59B7D"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-decor-1",
+        "name": "bush",
+        "tags": [
+          "starter:bush"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.8,
+            "y": 0.3225,
+            "z": 5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.65,
+            "y": 0.65,
+            "z": 0.65
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "bush"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "ground-island-2",
+        "name": "ground-island-2",
+        "tags": [
+          "ground"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -0.45,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "color": "#91CCAE"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-base-2",
+        "name": "island-base-2",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -1.2,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4.4,
+            "y": 0.7,
+            "z": 3.1
+          },
+          "color": "#B59B7D"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-decor-2",
+        "name": "bush",
+        "tags": [
+          "starter:bush"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.8,
+            "y": 0.3225,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.65,
+            "y": 0.65,
+            "z": 0.65
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "bush"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "ground-island-3",
+        "name": "ground-island-3",
+        "tags": [
+          "ground"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -0.45,
+            "z": 15
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "color": "#91CCAE"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-base-3",
+        "name": "island-base-3",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -1.2,
+            "z": 15
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4.4,
+            "y": 0.7,
+            "z": 3.1
+          },
+          "color": "#B59B7D"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-decor-3",
+        "name": "bush",
+        "tags": [
+          "starter:bush"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.8,
+            "y": 0.3225,
+            "z": 15
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.65,
+            "y": 0.65,
+            "z": 0.65
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "bush"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "ground-island-4",
+        "name": "ground-island-4",
+        "tags": [
+          "ground"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -0.45,
+            "z": 20
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "color": "#91CCAE"
+        },
+        "collider": {
+          "shape": "box",
+          "size": {
+            "x": 5,
+            "y": 0.9,
+            "z": 3.6
+          },
+          "trigger": false,
+          "membership": 1,
+          "mask": 4294967295
+        },
+        "body": {
+          "mode": "static",
+          "gravityEnabled": true,
+          "mass": 1,
+          "restitution": 0.3,
+          "friction": 0.5,
+          "rotationLocked": false
+        },
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-base-4",
+        "name": "island-base-4",
+        "tags": [],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": -1.2,
+            "z": 20
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          }
+        },
+        "visual": {
+          "kind": "box",
+          "size": {
+            "x": 4.4,
+            "y": 0.7,
+            "z": 3.1
+          },
+          "color": "#B59B7D"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "island-decor-4",
+        "name": "bush",
+        "tags": [
+          "starter:bush"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 1.8,
+            "y": 0.3225,
+            "z": 20
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.65,
+            "y": 0.65,
+            "z": 0.65
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "bush"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-0",
+        "name": "Treasure 1",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.33000000000000007,
+            "z": 5
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-1",
+        "name": "Treasure 2",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.33000000000000007,
+            "z": 10
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-2",
+        "name": "Treasure 3",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.33000000000000007,
+            "z": 15
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      },
+      {
+        "id": "goal-3",
+        "name": "Treasure 4",
+        "tags": [
+          "starter:gem"
+        ],
+        "enabled": true,
+        "visible": true,
+        "parentId": null,
+        "transform": {
+          "position": {
+            "x": 0,
+            "y": 0.33000000000000007,
+            "z": 20
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "w": 1
+          },
+          "scale": {
+            "x": 0.75,
+            "y": 0.75,
+            "z": 0.75
+          }
+        },
+        "visual": {
+          "kind": "model",
+          "assetId": "gem"
+        },
+        "collider": null,
+        "body": null,
+        "properties": {},
+        "character": null,
+        "interaction": null
+      }
+    ],
+    "assets": [
+      {
+        "id": "player",
+        "type": "model",
+        "url": "/models/starter/player.glb"
+      },
+      {
+        "id": "bush",
+        "type": "model",
+        "url": "/models/starter/bush.glb"
+      },
+      {
+        "id": "gem",
+        "type": "model",
+        "url": "/models/starter/gem.glb"
+      }
+    ],
+    "materials": [],
+    "prefabs": [],
+    "properties": {},
+    "settings": {
+      "background": "#C7EAFE",
+      "ambientIntensity": 0.65,
+      "sunIntensity": 0.8,
+      "shadows": true,
+      "resolutionScale": 1,
+      "maxDevicePixelRatio": 2,
+      "gravity": {
+        "x": 0,
+        "y": -9.81,
+        "z": 0
+      }
+    },
+    "cameras": {
+      "active": "follow",
+      "targetId": "player",
+      "target": {
+        "x": 0,
+        "y": 1,
+        "z": 0
+      },
+      "offset": {
+        "x": 0,
+        "y": 9,
+        "z": -11
+      },
+      "fieldOfView": 60
+    },
+    "input": {
+      "forward": [
+        "KeyW",
+        "ArrowUp"
+      ],
+      "backward": [
+        "KeyS",
+        "ArrowDown"
+      ],
+      "left": [
+        "KeyA",
+        "ArrowLeft"
+      ],
+      "right": [
+        "KeyD",
+        "ArrowRight"
+      ],
+      "jump": [
+        "Space"
+      ],
+      "interact": [
+        "KeyE"
+      ],
+      "primary": [
+        "Mouse0"
+      ]
+    }
+  },
+  "script": {
+    "language": "python",
+    "source": "from bark import game\n\nplayer = game.entity(\"player\")\ngoals = [[0,5],[0,10],[0,15],[0,20]]\ncollected = set()\nfinished = False\n\n@game.on_input(\"jump\")\nasync def jump(state):\n    if state.pressed:\n        await player.jump()\n\n@game.on_start\nasync def adventure():\n    global finished\n    await game.set_hud(\"progress\", \"Treasures\", \"0 / 4\")\n    await game.notify(\"Jump across the gaps. Find every crystal!\", 4)\n    while True:\n        right = await game.input(\"right\")\n        left = await game.input(\"left\")\n        forward = await game.input(\"forward\")\n        backward = await game.input(\"backward\")\n        await player.walk(int(right.held) - int(left.held), int(forward.held) - int(backward.held))\n        position = await player.position()\n        if position.y < -8:\n            await player.respawn()\n        if not finished:\n            pass\n            for index, goal in enumerate(goals):\n                if index in collected:\n                    continue\n                if (position.x - goal[0]) ** 2 + (position.z - goal[1]) ** 2 < 1.5 ** 2 and -1 < position.y < 3:\n                    collected.add(index)\n                    await game.entity(\"goal-\" + str(index)).destroy()\n                    await game.set_hud(\"progress\", \"Treasures\", str(len(collected)) + \" / 4\")\n                    if len(collected) == len(goals):\n                        finished = True\n                        await game.set_hud(\"result\", \"Adventure\", \"Complete!\")\n                        await game.notify(\"You did it! Restart for another adventure.\", 12)\n                    else:\n                        await game.notify(\"Found one! Keep exploring.\", 2)\n        await game.next_frame()\n"
+  }
+}

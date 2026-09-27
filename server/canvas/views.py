@@ -10,9 +10,10 @@ tabs, autosave + manual save) apply one after the other. Every successful write 
 game's new `revision`.
 """
 import json
+import uuid
 
 from django.conf import settings
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import Max
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.http import require_http_methods
@@ -73,9 +74,14 @@ def _not_found(what="Game"):
     return _error(f"{what} not found", status=404)
 
 
-def _summary(game):
+def _summary(game, user_id=None):
+    publication = getattr(game, "publication", None)
     return {
+        "publication": {"is_public": bool(publication and publication.is_public)},
         "id": str(game.id),
+        "owner": {"user": game.owner_id, "name": game.owner.username},
+        "role": "owner" if user_id in (None, game.owner_id) else "editor",
+        "collaboration": game.collaboration,
         "name": game.name,
         "revision": game.revision,
         "created_at": game.created_at.isoformat(),
@@ -83,8 +89,8 @@ def _summary(game):
     }
 
 
-def _detail(game):
-    return {**_summary(game), "document": to_document(game)}
+def _detail(game, user_id=None):
+    return {**_summary(game, user_id), "document": to_document(game)}
 
 
 # ---- games --------------------------------------------------------------------------------
@@ -103,12 +109,19 @@ def games(request):
          -> 400 invalid document or name, or the user already has MAX_GAMES_PER_USER games
     """
     if request.method == "GET":
-        return JsonResponse({"games": [_summary(g) for g in games_for(request.user_id)]})
+        return JsonResponse({"games": [_summary(g, request.user_id) for g in games_for(request.user_id).select_related("owner", "publication")]})
+    if request.headers.get("X-Bark-Owner", request.user_id) != request.user_id:
+        return _error("The signed-in account changed. Sign in to the original account to save.", 401)
 
     body = _json_body(request)
     body = {} if body is None and not request.body else body
     if not isinstance(body, dict):
         return _error("Body must be a JSON object")
+
+    try:
+        game_id = uuid.UUID(str(body["id"])) if "id" in body else uuid.uuid4()
+    except (ValueError, TypeError, AttributeError):
+        return _error("id must be a UUID")
 
     try:
         name = validate_name(body["name"]) if "name" in body else None
@@ -122,11 +135,20 @@ def games(request):
         return _error(str(exc))
 
     with transaction.atomic():
-        if games_for(request.user_id).count() >= MAX_GAMES_PER_USER:
+        # Serialise creates for this owner, including a retried first autosave.
+        type(request.jwt_user).objects.select_for_update().get(pk=request.jwt_user.pk)
+        existing = Game.objects.select_for_update().filter(pk=game_id).first()
+        if existing:
+            return JsonResponse(_detail(existing)) if existing.owner_id == request.user_id else _error("Game id unavailable", 409)
+        if Game.objects.filter(owner_id=request.user_id).count() >= MAX_GAMES_PER_USER:
             return _error(f"You can have at most {MAX_GAMES_PER_USER} games")
-        game = Game.objects.create(owner=request.jwt_user, name=document["project"]["name"])
+        try:
+            with transaction.atomic():
+                game = Game.objects.create(id=game_id, owner=request.jwt_user, name=document["project"]["name"])
+        except IntegrityError:
+            return _error("Game id unavailable", 409)
         save_document(game, document)
-    return JsonResponse(_detail(game), status=201)
+        return JsonResponse(_detail(game, request.user_id), status=201)
 
 
 # GET    /api/canvas/games/<id>/   the whole game
@@ -144,15 +166,30 @@ def game_detail(request, game_id):
     DELETE -> 204 (the game and all its sections)
     404 if the game doesn't exist or isn't yours.
     """
+    if request.method != "GET" and request.headers.get("X-Bark-Owner", request.user_id) != request.user_id:
+        return _error("The signed-in account changed. Sign in to the original account to save.", 401)
     if request.method == "GET":
-        game = get_game(request.user_id, game_id)
-        return JsonResponse(_detail(game)) if game else _not_found()
+        with transaction.atomic():
+            game = get_game(request.user_id, game_id, for_update=True)
+            return JsonResponse(_detail(game, request.user_id)) if game else _not_found()
 
     body = _json_body(request) if request.method in ("PUT", "PATCH") else None
     with transaction.atomic():
         game = get_game(request.user_id, game_id, for_update=True)
         if game is None:
             return _not_found()
+        if request.method in ("PATCH", "DELETE") and game.owner_id != request.user_id:
+            return _error("Only the owner can rename or delete this workspace", 403)
+        if game.collaboration and request.method == "PUT":
+            return _error("This workspace uses live editing. Reopen it to connect.", 409)
+
+        expected = request.headers.get("If-Match")
+        if expected is not None:
+            digits = expected[1:-1]
+            if not (expected.startswith('"') and expected.endswith('"') and digits.isascii() and digits.isdigit() and len(digits) <= 10):
+                return _error('If-Match must be a quoted revision')
+            if int(digits) != game.revision:
+                return JsonResponse({"error": "This game changed in another tab.", "revision": game.revision}, status=412)
 
         if request.method == "DELETE":
             game.delete()
@@ -169,7 +206,7 @@ def game_detail(request, game_id):
         except DocumentError as exc:
             transaction.set_rollback(True)
             return _error(str(exc))
-    return JsonResponse(_detail(game))
+        return JsonResponse(_detail(game, request.user_id))
 
 
 def _require_object(body):
@@ -219,6 +256,8 @@ def section(request, game_id, section):
         game = get_game(request.user_id, game_id)
         if game is None:
             return _not_found()
+        if game.collaboration and request.method != "GET":
+            return _error("This workspace uses live editing. Reopen it to connect.", 409)
         return JsonResponse({"revision": game.revision, section: _read_section(game, section)})
 
     value = _json_body(request)
@@ -226,6 +265,8 @@ def section(request, game_id, section):
         game = get_game(request.user_id, game_id, for_update=True)
         if game is None:
             return _not_found()
+        if game.collaboration and request.method != "GET":
+            return _error("This workspace uses live editing. Reopen it to connect.", 409)
         try:
             _write_section(game, section, value)
         except DocumentError as exc:
@@ -259,6 +300,8 @@ def entities(request, game_id):
         game = get_game(request.user_id, game_id)
         if game is None:
             return _not_found()
+        if game.collaboration and request.method != "GET":
+            return _error("This workspace uses live editing. Reopen it to connect.", 409)
         return JsonResponse({"revision": game.revision, "entities": [entity_to_json(e) for e in game.entities.all()]})
 
     body = _json_body(request)
@@ -266,6 +309,8 @@ def entities(request, game_id):
         game = get_game(request.user_id, game_id, for_update=True)
         if game is None:
             return _not_found()
+        if game.collaboration and request.method != "GET":
+            return _error("This workspace uses live editing. Reopen it to connect.", 409)
         try:
             validate_entity(body)
             if game.entities.filter(item_id=body["id"]).exists():
@@ -309,6 +354,8 @@ def entity(request, game_id, entity_id):
         game = get_game(request.user_id, game_id, for_update=True)
         if game is None:
             return _not_found()
+        if game.collaboration and request.method != "GET":
+            return _error("This workspace uses live editing. Reopen it to connect.", 409)
         row = game.entities.filter(item_id=entity_id).first()
         if row is None:
             return _not_found("Entity")
@@ -355,6 +402,8 @@ def library(request, game_id, library):
         game = get_game(request.user_id, game_id)
         if game is None:
             return _not_found()
+        if game.collaboration and request.method != "GET":
+            return _error("This workspace uses live editing. Reopen it to connect.", 409)
         return JsonResponse({"revision": game.revision, library: [i.data for i in _library(game, library).all()]})
 
     body = _json_body(request)
@@ -362,6 +411,8 @@ def library(request, game_id, library):
         game = get_game(request.user_id, game_id, for_update=True)
         if game is None:
             return _not_found()
+        if game.collaboration and request.method != "GET":
+            return _error("This workspace uses live editing. Reopen it to connect.", 409)
         items = _library(game, library)
         try:
             validate_library_item(body, library)
@@ -402,6 +453,8 @@ def library_item(request, game_id, library, item_id):
         game = get_game(request.user_id, game_id, for_update=True)
         if game is None:
             return _not_found()
+        if game.collaboration and request.method != "GET":
+            return _error("This workspace uses live editing. Reopen it to connect.", 409)
         row = _library(game, library).filter(item_id=item_id).first()
         if row is None:
             return _not_found("Item")

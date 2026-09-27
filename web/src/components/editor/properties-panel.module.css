@@ -1,0 +1,51 @@
+.panel { display: flex; flex-direction: column; height: 100%; min-height: 0; overflow: hidden; padding: 18px 16px 12px; background: #fffffff2; border: 1px solid white; border-radius: 22px; color: #272566; line-height: 1.35; }
+.heading { display: flex; align-items: center; gap: 9px; flex-shrink: 0; }
+.heading h2 { margin: 0; font-size: 19px; font-weight: 900; letter-spacing: -.4px; }
+.heading > svg { color: #6556b5; }
+.live { margin-left: auto; color: #669d83; background: #eff7f1; padding: 4px 7px; border-radius: 6px; font-size: 10px; font-weight: 800; }
+.identity { display: flex; gap: 12px; align-items: center; margin: 20px 0 18px; min-width: 0; flex-shrink: 0; }
+.identity > div:last-child { min-width: 0; }
+.thumbnail { width: 66px; height: 68px; flex-shrink: 0; border-radius: 17px; display: grid; place-items: center; background: linear-gradient(140deg, #eaf5fc, #f1edfe); color: #6b61ae; border: 1px solid #e6edf8; }
+.thumbnail img { width: 100%; height: 100%; object-fit: contain; }
+.eyebrow { display: block; font-size: 8px; font-weight: 900; letter-spacing: 1.2px; color: #9299b4; }
+.identity strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; font-weight: 900; margin: 3px 0 5px; }
+.kind { font-size: 11px; color: #8b81b3; background: #f1edfa; border-radius: 5px; padding: 2px 6px; }
+.name { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; font-size: 11px; color: #7a81a0; font-weight: 800; margin-bottom: 16px; }
+.name input { width: 100%; min-height: 0; border: 1px solid #e3e9f4; border-radius: 9px; background: #f8faff; padding: 7px 11px; color: #272566; font: inherit; font-size: 13px; line-height: 18px; font-weight: 750; }
+.sections { flex: 1; min-height: 0; }
+.section { border-top: 1px solid #ecedf5; }
+.sectionTrigger { display: flex; align-items: center; width: 100%; gap: 9px; background: transparent; color: #36376f; border: 0; padding: 13px 0; font: inherit; font-size: 12px; font-weight: 850; cursor: pointer; }
+.sectionTrigger:hover { color: #078bfa; }
+.sectionIcon { display: grid; place-items: center; color: #8886ae; }
+.sectionTrigger[aria-expanded=true] .sectionIcon { color: #1689eb; }
+.chevron { margin-left: auto; color: #a2a6bd; transition: transform .18s; }
+.chevron[data-open=true] { transform: rotate(180deg); }
+.sectionBody { overflow: hidden; }
+.sectionBody fieldset { display: flex; flex-direction: column; gap: 12px; border: 0; padding: 0 0 15px; margin: 0; min-width: 0; }
+.sectionBody label { font-size: 12px; }
+.sectionBody input:disabled { opacity: .48; cursor: not-allowed; }
+.panel input:focus-visible, .panel button:focus-visible { outline: 2px solid #4a9fe8; outline-offset: 2px; }
+.sectionBody [data-transform] > span { font-size: 11px; margin-bottom: 7px; color: #7b809d; }
+.sectionBody [data-transform] > div { gap: 5px; }
+.sectionBody [data-transform] label > span { min-width: 22px; font-size: 11px; padding: 8px 5px; }
+.sectionBody [data-transform] input { font-size: 12px !important; }
+.sectionBody [data-transform] small { float: right; font-size: 9px; font-weight: 650; color: #a0a6bc; }
+.sectionBody p { margin: 0; padding: 8px 10px; border-radius: 8px; background: #f5f7fc; color: #8a91a8; font-size: 10px; line-height: 1.5; }
+.sectionBody button { font-size: 12px !important; min-height: 34px; border-radius: 9px; }
+.sectionBody input[type=color] { width: 50px; height: 30px; padding: 3px; border: 1px solid #e3e9f4; border-radius: 7px; background: #f8faff; }
+.sectionBody fieldset > label { display: flex; align-items: center; justify-content: space-between; font-weight: 750; }
+.sectionBody fieldset > div > span { font-size: 11px; }
+.sectionBody fieldset > div { margin: 0; }
+.sectionBody fieldset > div > button { min-height: 38px; font-size: 12px !important; }
+.bottom { flex-shrink: 0; border-top: 1px solid #ecedf5; padding-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 5px; }
+.bottom button { display: flex; gap: 7px; align-items: center; border: 0; background: transparent; font: inherit; font-size: 11px; color: #b77c88; padding: 5px 8px; border-radius: 7px; cursor: pointer; }
+.bottom button:hover:enabled { background: #fff0f2; color: #c14c68; }
+.bottom button:disabled { opacity: .4; cursor: default; }
+.world { display: flex; flex-direction: column; gap: 16px; }
+.world h3 { margin: 0; font-size: 14px; }
+.world > fieldset { gap: 20px; }
+.world label { font-size: 12px; }
+.world p { font-size: 11px; line-height: 1.6; color: #9198b2; margin: 0; }
+@media (max-height: 850px) { .panel { padding: 14px 14px 10px; } .identity { margin: 14px 0; } .thumbnail { height: 57px; width: 57px; border-radius: 13px; } .name { margin-bottom: 12px; } .sectionTrigger { padding: 11px 0; } .sectionBody fieldset { gap: 10px; padding-bottom: 12px; } }
+@media (max-height: 740px) { .identity { margin: 10px 0; } .thumbnail { height: 46px; width: 46px; } .identity strong { font-size: 17px; margin: 2px 0; } .name { margin-bottom: 8px; } .name input { padding: 7px 10px; } .sectionTrigger { padding: 9px 0; } .sectionBody fieldset { gap: 8px; padding-bottom: 9px; } .sectionBody [data-transform] label > span { padding: 6px 5px; } .bottom > span { display: none; } .bottom { padding-top: 7px; } }
+@media (prefers-reduced-motion: reduce) { .chevron { transition: none; } }

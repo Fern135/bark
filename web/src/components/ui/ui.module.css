@@ -55,6 +55,12 @@
 .input:disabled { color: #727b97; background: #eef2f7; opacity: .7; cursor: not-allowed; }
 .input[aria-invalid="true"] { border-color: #cf5b6c; background: #fff8f9; }
 .withIcon { padding-left: 42px; }
+.withAction { padding-right: 52px; }
+.inputAction { position: absolute; right: 4px; inset-block: 0; display: flex; align-items: center; }
+.passwordToggle { width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 11px; background: transparent; color: var(--bark-muted); cursor: pointer; }
+.passwordToggle:hover { color: var(--bark-blue-dark); background: #eaf4ff; }
+.passwordToggle:focus-visible { outline: 2px solid var(--bark-focus); outline-offset: -2px; }
+.passwordToggle:disabled { opacity: .45; cursor: not-allowed; }
 .inputIcon { position: absolute; top: 0; bottom: 0; left: 14px; display: flex; align-items: center; color: var(--bark-muted); pointer-events: none; }
 .select { appearance: none; padding-right: 42px; }
 .selectIcon { position: absolute; right: 15px; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none; color: var(--bark-blue-dark); }

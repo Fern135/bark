@@ -1,0 +1,18 @@
+.page { min-height: 100vh; background: #f8fafc; color: #24354a; }
+.page a { text-decoration: none; color: inherit; }
+.page > header, .page > footer { max-width: 1180px; margin: auto; padding-left: 24px; padding-right: 24px; }
+.main { max-width: 1180px; margin: auto; padding: 48px 24px; }
+.heading { display: flex; justify-content: space-between; gap: 24px; align-items: center; margin-bottom: 32px; }
+.heading h1 { font-size: clamp(30px, 4vw, 48px); font-weight: 850; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 24px; }
+.card { border: 1px solid #dce5eb; border-radius: 22px; padding: 24px; background: white; box-shadow: 0 5px 0 #e8eef3; }
+.card h2 { font-size: 23px; overflow-wrap: anywhere; }
+.card p { color: #65758a; }
+.actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.actions a { color: #245d9d; font-weight: 750; }
+.notice { background: #fff1c9; border-radius: 12px; padding: 16px; margin: 16px 0; }
+@media (max-width: 600px) {
+  .page > header { height: auto; min-height: 82px; align-content: normal; row-gap: 8px; padding-top: 14px; padding-bottom: 14px; }
+  .heading { align-items: flex-start; flex-direction: column; }
+  .main { padding: 24px 16px; }
+}

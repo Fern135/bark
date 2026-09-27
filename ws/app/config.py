@@ -24,10 +24,8 @@ ALLOWED_ORIGINS = _csv("WS_ALLOWED_ORIGINS")
 
 # Seconds a client has to send its auth message when no cookie is present.
 AUTH_TIMEOUT = float(os.environ.get("WS_AUTH_TIMEOUT", "5"))
-# A single `replace` op covering a large block stack (bark_start in the sample is ~500
-# lines of JSON) comfortably exceeds 64 KiB, so the frame ceiling is 1 MiB. Abuse is
-# bounded by the per-op caps below and the per-connection rate limits instead.
-MAX_MESSAGE_BYTES = int(os.environ.get("WS_MAX_MESSAGE_BYTES", str(1024 * 1024)))
+# Whole-document imports carry before/after values; Canvas enforces a 10 MiB document cap.
+MAX_MESSAGE_BYTES = int(os.environ.get("WS_MAX_MESSAGE_BYTES", str(24 * 1024 * 1024)))
 
 # ---- collaboration ----
 # Seconds a lock survives without a heartbeat. A live lock is never stolen; this only

@@ -23,6 +23,10 @@ RUN groupadd --system app && useradd --system --gid app --create-home app
 
 COPY --chown=app:app . .
 RUN chmod +x /app/entrypoint.sh
+# collectstatic does not access the database. Supply build-only placeholders; no live secrets.
+RUN DJANGO_SECRET_KEY=build-only JWT_SECRET=build-only POSTGRES_DB=build \
+    POSTGRES_USER=build POSTGRES_PASSWORD=build python manage.py collectstatic --noinput \
+    && chown -R app:app /app/staticfiles
 
 USER app
 EXPOSE 8000

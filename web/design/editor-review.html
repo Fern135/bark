@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bark editor — reference comparison</title>
+<style>
+body{margin:0;padding:24px;font:16px system-ui;background:#eef5fa;color:#17224b}h1{font-size:24px}nav{display:flex;gap:8px;margin:20px 0}button{padding:10px 18px;border:1px solid #cbd9ed;border-radius:12px;background:white;color:inherit;cursor:pointer}button[aria-pressed=true]{background:#0789ff;color:white}.comparison{display:grid;grid-template-columns:1fr 1fr;gap:16px}figure{margin:0;min-width:0}figcaption{font-weight:700;margin-bottom:10px}img{width:100%;border-radius:14px;box-shadow:0 4px 22px #17365a15}a{color:#0078de}@media(max-width:900px){.comparison{grid-template-columns:1fr}nav{flex-wrap:wrap}}
+</style>
+<h1>Bark editor: reference and implementation</h1>
+<p>Actual browser captures at 1586 × 992. The implementation uses local, licensed game models and functional controls.</p>
+<nav aria-label="Compare editor screens"></nav>
+<div class="comparison"><figure><figcaption>Reference</figcaption><a id="referenceLink"><img id="reference" alt="Design reference"></a></figure><figure><figcaption>Implementation</figcaption><a id="actualLink"><img id="actual" alt="Actual editor screenshot"></a></figure></div>
+<script>
+const screens={Code:['world-code','code'],Design:['customize-model','design'],Viewport:['viewport','viewport'],Gallery:['model-gallery','gallery'],'Add object':['add-object','add']};
+for(const [label,[ref,actual]] of Object.entries(screens)){const button=document.createElement('button');button.textContent=label;button.onclick=()=>{document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));document.getElementById('reference').src=document.getElementById('referenceLink').href=`references/${ref}.png`;document.getElementById('actual').src=document.getElementById('actualLink').href=`editor-${actual}-preview.png`;};document.querySelector('nav').append(button);}
+document.querySelector('nav button').click();
+</script>
+</html>

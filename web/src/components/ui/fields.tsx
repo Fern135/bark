@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, type CSSProperties, type InputHTMLAttributes, type SelectHTMLAttributes, type ReactNode } from "react";
+import { useId, useState, type CSSProperties, type InputHTMLAttributes, type SelectHTMLAttributes, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { transitions } from "./motion";
 import { Icon } from "./icon";
@@ -24,19 +24,32 @@ function describedBy(id: string, description?: string, error?: string, external?
 }
 
 export type TextInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size" | "type"> & FieldProps & {
-  type?: "text" | "search" | "number";
+  type?: "text" | "search" | "number" | "email" | "password";
   leadingIcon?: ReactNode;
+  trailingAction?: ReactNode;
 };
 
-export function TextInput({ label, description, error, leadingIcon, type = "text", id: suppliedId, className = "", ...props }: TextInputProps) {
+export function TextInput({ label, description, error, leadingIcon, trailingAction, type = "text", id: suppliedId, className = "", ...props }: TextInputProps) {
   const generatedId = useId();
   const id = suppliedId ?? generatedId;
   return <Field id={id} label={label} description={description} error={error}>
     <div className={styles.inputWrap}>
       {(leadingIcon || type === "search") && <span className={styles.inputIcon}>{leadingIcon ?? <Icon name="search" />}</span>}
-      <input {...props} id={id} type={type} aria-invalid={error ? true : props["aria-invalid"]} aria-describedby={describedBy(id, description, error, props["aria-describedby"])} className={`${styles.input} ${leadingIcon || type === "search" ? styles.withIcon : ""} ${className}`} />
+      <input {...props} id={id} type={type} aria-invalid={error ? true : props["aria-invalid"]} aria-describedby={describedBy(id, description, error, props["aria-describedby"])} className={`${styles.input} ${leadingIcon || type === "search" ? styles.withIcon : ""} ${trailingAction ? styles.withAction : ""} ${className}`} />
+      {trailingAction && <span className={styles.inputAction}>{trailingAction}</span>}
     </div>
   </Field>;
+}
+
+export function PasswordInput({ id: suppliedId, ...props }: Omit<TextInputProps, "type" | "trailingAction">) {
+  const generatedId = useId();
+  const id = suppliedId ?? generatedId;
+  const [visible, setVisible] = useState(false);
+  return <TextInput {...props} id={id} type={visible ? "text" : "password"} trailingAction={
+    <button className={styles.passwordToggle} type="button" disabled={props.disabled} aria-label={visible ? "Hide password" : "Show password"} aria-controls={id} onClick={() => setVisible((value) => !value)}>
+      <Icon name={visible ? "eyeOff" : "eye"} size={19} />
+    </button>
+  } />;
 }
 
 export type SelectOption = { value: string; label: string; disabled?: boolean };
