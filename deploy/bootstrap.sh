@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Run on a fresh Ubuntu VM: sudo bash deploy/bootstrap.sh ADMIN_IPV4/32 [oci|none]
 set -euo pipefail
+export DEBIAN_FRONTEND=noninteractive
 test "$(id -u)" = 0 || { echo 'Run with sudo'; exit 1; }
 architecture=$(dpkg --print-architecture)
 case "$architecture" in arm64|amd64) ;; *) echo 'Requires ARM64 or AMD64 Ubuntu'; exit 1;; esac
