@@ -94,7 +94,7 @@ export default function Editor({
   const playing = ["running", "paused", "preparing"].includes(editor.status);
 const byte = useByteHints(
   editor.game,
-  (typeof saveSeed !== "undefined" && saveSeed?.id) ?? editor.cloud?.gameId,
+  saveSeed.id ?? editor.cloud?.gameId,
   editor.localScriptRevision,
   tab === "code" && !editor.lock && !adding && !replacing && !languageOpen && !drawer && editor.ready && !editor.busy && !playing,
   editor.documentGeneration,
@@ -424,7 +424,7 @@ const byteTips = aiTip && !(aiTip.kind === "idea" && byteReview.tips.some((tip) 
                 : "Click the world to focus · Stop to return to editing"
               : editor.tools.tool === "resize" ? "Drag a face · Alt: center · Shift: proportions" : "Right drag: orbit · Scroll: zoom · Click: select"}
           </div>
-          {tab === "viewport" && <ByteAssistant className={s.mascot} tips={byteTips} ai={byteAI} />}
+          {tab === "viewport" && <ByteAssistant className={s.mascot} tips={byteTips} ai={byte} />}
         </section>
         {tab === "design" && (
           <motion.section className={s.studioPanel} aria-label="Model studio" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.24 }}>
@@ -438,7 +438,7 @@ const byteTips = aiTip && !(aiTip.kind === "idea" && byteReview.tips.some((tip) 
                 Choose an object in Scene to customize it.
               </div>
             )}
-            <ByteAssistant className={s.mascot} tips={byteTips} ai={byteAI} />
+            <ByteAssistant className={s.mascot} tips={byteTips} ai={byte} />
           </motion.section>
         )}
         {tab === "code" && (
@@ -478,7 +478,7 @@ onChange={(source, before) => {
                   />
                 ))}
             </div>
-            <ByteAssistant className={s.codeMascot} tips={byteTips} ai={byteAI} />
+            <ByteAssistant className={s.codeMascot} tips={byteTips} ai={byte} />
           </motion.section>
         )}
         <aside className={s.sidebar}>
