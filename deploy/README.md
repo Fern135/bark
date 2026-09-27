@@ -49,10 +49,13 @@ Production account recovery is deliberately disabled, including direct API reque
    ```text
    Allow dynamic-group bark-vm to read buckets in compartment bark where target.bucket.name = 'bark-backups'
    Allow dynamic-group bark-vm to manage objects in compartment bark where target.bucket.name = 'bark-backups'
-   Allow dynamic-group bark-vm to use ons-topics in compartment bark where target.topic.id = 'YOUR_TOPIC_OCID'
+   Allow dynamic-group bark-vm to {ONS_TOPIC_PUBLISH} in compartment bark-alerts
    ```
 
-   The VM uses instance principals, so no OCI API key is copied into the app.
+   Put the hosting notification topic in a dedicated `bark-alerts` compartment.
+   Notifications supports general IAM variables, not `target.topic.id`; isolate
+   the topic by compartment and grant only message publication there. The VM uses
+   instance principals, so no OCI API key is copied into the app.
 7. Register an available name on DuckDNS and point it to the VM's IPv4. Update it
    when replacing the VM. Never commit the DuckDNS token. Confirm public DNS before
    starting Caddy. `bark-yourname.duckdns.org` below is an example, not a reserved name.
@@ -66,13 +69,14 @@ existing usage and cost estimate before creating anything, including after an ap
 Pay As You Go upgrade. That upgrade is usage billing, not a flat $5 plan. Budget
 alerts are notifications, not spending caps.
 
-The initial Chicago network was created in the root compartment. If continuing that
-setup, create the bucket/topic there too and replace `in compartment bark` in the
-policies above with `in tenancy`, keeping the exact bucket/topic restrictions and
-the dynamic group's single-instance match. Do not grant access to all buckets or VMs.
+The Chicago network and backup bucket are in the root compartment. Their bucket
+policies use `in tenancy` with the exact bucket-name condition. The notification
+topic is in `bark-alerts`, with publish-only permission scoped to that compartment.
+The dynamic group matches only the production instance.
 
 Sources: [Oracle free limits](https://docs.oracle.com/en-us/iaas/Content/FreeTier/freetier_topic-Always_Free_Resources.htm),
 [instance principals](https://docs.oracle.com/en-us/iaas/Content/Identity/Tasks/callingservicesfrominstances.htm),
+[Notifications IAM](https://docs.oracle.com/en-us/iaas/Content/Identity/policyreference/notificationpolicyreference.htm),
 [DuckDNS](https://www.duckdns.org/about.jsp),
 [automatic DNS and TLS](https://sslip.io/),
 [Caddy HTTPS](https://caddyserver.com/docs/automatic-https).
@@ -104,8 +108,9 @@ SSH plus sudo; do not expose Docker's socket/API to the internet.
 
 `bootstrap.sh` installs Docker Engine/Compose from Docker's Ubuntu repository, the
 OCI CLI, automatic Ubuntu security updates, and a host firewall. It is intended for
-a **fresh** VM and does not remove pre-existing permissive firewall rules. Check OCI
-and host firewall rules together, including any image-default iptables rejects:
+a **fresh** VM. On the recognized OCI image it removes the legacy inbound SSH
+accept/reject rules after UFW is active, preserving Oracle metadata/storage rules
+and saving the original configuration. Check OCI and host firewall rules together:
 ports 80/443 must actually reach Caddy. Docker-published ports can bypass UFW, so the
 cloud ingress rules and the Compose port list remain authoritative. Automatic
 security reboots are disabled; schedule reboots explicitly.

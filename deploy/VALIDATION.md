@@ -1,5 +1,80 @@
 # Validation record — September 26, 2026
 
+## Live Oracle deployment
+
+Serving **https://bark.164-152-22-118.sslip.io** from Chicago A1 Flex,
+2 OCPUs, 12 GB RAM and a 100 GB boot volume. The deployed application release is
+`bc73085517aa42fa28e54715b1a8534ff5aff7a7`, pushed to `codex/hosting-release`.
+Subsequent concurrent local application edits are not included in this release.
+
+Verified on the actual ARM64 VM:
+
+- All four application images built successfully and report `arm64`.
+- 204 Django tests and 59 WebSocket tests passed against disposable PostgreSQL 17
+  and Redis. Their separate Compose volumes were removed afterward.
+- Seven production services run; web, API, WebSocket, gateway, PostgreSQL and Redis
+  health checks pass. Only Caddy publishes application ports, TCP 80 and 443.
+- Let's Encrypt issued the hostname certificate. Public HTTPS, API readiness and
+  collected Django admin CSS return 200. SSH ingress is restricted to the configured
+  administrator IPv4 /32. The UFW rules survived reboot.
+- Browser signup, secure/HttpOnly auth cookies, secure CSRF cookies, autosave,
+  offline retry, two-tab conflict handling, game reopening, playback and logout pass.
+- Two browser contexts passed socket locking, durable edits, deduplication, replay
+  and membership revocation. Shared Python/assets import and offline reconnect pass.
+  A separate live editor reconnected after an actual WebSocket container restart,
+  then saved a new name that was verified through the API.
+- Anonymous sandboxed Python playback ran through the public hostname. Its worker
+  could not access account APIs, parent DOM or parent storage. Recovery links/forms
+  are hidden, signup displays the notice, all three recovery POSTs return 503,
+  the demo inbox returns 404, and the demo-email table remains empty.
+- The saved acceptance game was published through the editor UI, opened and played
+  as an anonymous visitor in the sandbox, then unpublished through the UI.
+  The broader publishing scenario also passed discovery, gameplay, pause/resume,
+  fullscreen, mobile/tablet layout, live public updates and unpublishing.
+- Forged X-Forwarded-For addresses did not bypass the public login rate limit.
+- Stopping Redis caused WebSocket readiness to return 503 and the API readiness
+  probe to fail. The monitor published outage and recovery notifications via OCI.
+- The VM was rebooted. Services, timers and HTTPS returned, and the saved acceptance
+  game reopened and started playing afterward.
+- A populated compressed backup was uploaded to the private bucket, downloaded
+  again and checksum verified. It restored into a new database and then into a
+  disposable stack; Chrome logged in, reopened the saved game and started playback
+  through an SSH tunnel. That stack and its volumes were removed afterward.
+
+Nightly backups keep seven daily copies plus two predeployment copies, capped at
+9 GiB in the dedicated private bucket. The nightly and five-minute monitoring
+timers are enabled. A pre-migration backup plus production secrets are saved with
+user/SYSTEM-only ACLs under `~/.bark-backups/2026-09-27T011656Z/` on the administrator's
+computer; a populated backup and test-account fixture are in its private `acceptance/`
+directory. Secrets are not in Git. Container logs rotate and unattended Ubuntu
+security updates are enabled. Approximately 89 GiB remained free before final QA.
+
+The notification topic is isolated in `bark-alerts`; the instance can only publish
+there. Oracle accepted test/outage/recovery messages and the email subscription is
+ACTIVE. Inbox receipt was not inspected. Compute heartbeat samples were observed
+and the ten-minute missing-heartbeat alarm enabled; a prolonged stopped-VM alarm
+test has not been performed. No paid replacement shape or OVH order was used.
+
+### Remaining application acceptance issue
+
+The extended two-editor Blockly drag scenario is **not passing**: after two
+simultaneous root-block drags, only one root position change was observed in the
+saved document (expected two). Invites, object edits and shared naming had passed
+before that assertion. This does not invalidate the separate passing socket,
+Python-edit and restart/reconnect checks, but collaborative Blockly editing is not
+fully accepted. Investigate the input simulation and application behavior before
+claiming that scenario works. Concurrent local collaboration changes were preserved
+and have not been deployed.
+
+The public HTTPS test copies added Origin headers to their direct API setup calls;
+the original helpers assumed HTTP and otherwise correctly received CSRF 403s.
+Initial publishing while the first save was still pending showed the existing
+save-before-publish message. Publishing after the saved state passed. A separate
+browser run encountered connection timeouts; the final publishing run and dedicated
+reboot/restore browser checks succeeded. No TLS validation was disabled.
+
+The earlier sections below are historical, not the current deployment status.
+
 ## Return to Oracle
 
 The owner reports that the Oracle account upgrade completed and selected Oracle
