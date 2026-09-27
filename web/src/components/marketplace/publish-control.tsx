@@ -1,7 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
-import Image from "next/image";
-import * as Popover from "@radix-ui/react-popover";
+import * as Dialog from "@radix-ui/react-dialog";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -10,6 +9,7 @@ import { errorMessage } from "@/lib/accounts";
 import { gamesApi, type SavedGame } from "@/lib/games";
 import { captureCover, marketplaceApi } from "@/lib/marketplace";
 import s from "./publishing.module.css";
+import { PublishCelebration } from "./publish-celebration";
 
 export function CopyGameLink({ id }: { id: string }) {
   const [message, setMessage] = useState("");
@@ -47,18 +47,20 @@ export function PublishControl({ id, title, published = false, role = "owner", d
     finally { working.current = false; setBusy(false); }
   }
   if (role !== "owner") return <span className={s.visibility}>{isPublic ? "Public · Saved changes are public" : "Private · Owner can publish"}</span>;
-  return <Popover.Root open={open} onOpenChange={setOpen}>
-    <Popover.Anchor asChild><span className={s.trigger}><Button ref={trigger} variant="accent" loading={busy} disabled={disabled} leadingIcon={<Icon name="upload" />} onClick={() => isPublic ? setOpen(!open) : void change(true)}>{busy ? "Publishing…" : isPublic ? "Published" : "Publish"}</Button>{isPublic && <small>Saved changes are public</small>}</span></Popover.Anchor>
-    <AnimatePresence>{open && <Popover.Portal forceMount><Popover.Content asChild forceMount sideOffset={12} collisionPadding={16} onCloseAutoFocus={(event) => { event.preventDefault(); trigger.current?.focus(); }}>
+  return <Dialog.Root open={open} onOpenChange={setOpen}>
+    <span className={s.trigger}><Button ref={trigger} className={s.publishButton} variant="accent" loading={busy} disabled={disabled} leadingIcon={<Icon name="upload" />} onClick={() => isPublic ? setOpen(!open) : void change(true)}>{busy ? "Publishing…" : isPublic ? "Published" : "Publish"}</Button>{isPublic && <small>Saved changes are public</small>}</span>
+    <AnimatePresence>{open && <Dialog.Portal forceMount>
+      <Dialog.Overlay asChild forceMount><motion.div className={s.overlay} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} /></Dialog.Overlay>
+      <div className={s.position}><Dialog.Content asChild forceMount onCloseAutoFocus={(event) => { event.preventDefault(); trigger.current?.focus(); }}>
       <motion.section className={s.panel} aria-label="Publishing" initial={{ opacity: 0, y: -8, scale: .96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, scale: .97 }} transition={{ type: "spring", stiffness: 380, damping: 30 }}>
-        <Popover.Close className={s.close} aria-label="Close publishing panel">×</Popover.Close>
-        <Image src="/images/landing/byte-wave.png" alt="Byte waving" width={96} height={96} />
-        <h2>{isPublic ? "Your world is public!" : "Your world is private"}</h2>
+        <Dialog.Close className={s.close} aria-label="Close publishing panel">×</Dialog.Close>
+        {isPublic && <PublishCelebration />}
+        <Dialog.Title>{isPublic ? "Your world is public!" : "Your world is private"}</Dialog.Title>
         <p className={s.world}>{title}</p>
-        <p>{isPublic ? "Anyone can find and play your world. Saved changes are public." : "Your world is only available to you and your collaborators."}</p>
+        <Dialog.Description>{isPublic ? "Anyone can find and play your world. Saved changes are public." : "Your world is only available to you and your collaborators."}</Dialog.Description>
         {error && <p role="alert" className={s.error}>{error}</p>}
         {isPublic ? <><div className={s.actions}><a className={s.view} href={`/games/${id}`} target="_blank" rel="noopener noreferrer">View game ↗</a><CopyGameLink id={id} /></div><Button variant="subtle" disabled={busy} onClick={() => void change(false)}>Unpublish</Button></> : <Button variant="accent" disabled={busy || disabled} onClick={() => void change(true)}>{error ? "Retry publish" : "Publish"}</Button>}
       </motion.section>
-    </Popover.Content></Popover.Portal>}</AnimatePresence>
-  </Popover.Root>;
+    </Dialog.Content></div></Dialog.Portal>}</AnimatePresence>
+  </Dialog.Root>;
 }

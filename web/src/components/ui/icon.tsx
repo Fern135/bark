@@ -5,6 +5,8 @@ const paths = {
   globe: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM3 12h18M12 3a18 18 0 0 1 0 18 18 18 0 0 1 0-18Z",
   trash: "M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7",
   play: "m8 4 12 8-12 8Z",
+  volume: "M11 4 6 8H3v8h3l5 4ZM15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14",
+  volumeOff: "M11 4 6 8H3v8h3l5 4Zm5 5 6 6m0-6-6 6",
   upload: "M12 16V3m-5 5 5-5 5 5M4 15v5a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-5",
   plus: "M12 5v14M5 12h14",
   close: "m6 6 12 12M6 18 18 6",

@@ -1,6 +1,6 @@
 # Production-style stack:  docker compose up -d --build
 # Only the `proxy` service publishes a port. db, server, ws and web sit on an
-# internal network with no route to or from the outside world.
+# internal network. Only Django also has outbound access for Byte's AI reviews and voice.
 
 x-hardening: &hardening
   restart: unless-stopped
@@ -60,6 +60,7 @@ services:
         condition: service_healthy
     networks:
       - internal
+      - coach_egress
 
   ws:
     <<: *hardening
@@ -121,6 +122,7 @@ services:
       - internal
 
 networks:
+  coach_egress:
   public:
   internal:
     internal: true

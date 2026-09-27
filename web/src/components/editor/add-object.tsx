@@ -66,9 +66,13 @@ export function AddObject({
   async function add() {
     setError("");
     const project = structuredClone(editor.game.project);
-    for (const asset of catalogAssets())
-      if (!project.assets.some((a) => a.id === asset.id))
+    for (const asset of catalogAssets()) {
+      const existing = project.assets.find((a) => a.id === asset.id);
+      if (!existing)
         project.assets.push(asset);
+      else if (!upload && item.id === "player" && asset.id === "starter-player" && /\/models\/(?:starter|toys)\/player\.glb$/.test(existing.url))
+        existing.url = asset.url;
+    }
     const old = replacing
       ? project.entities.find((e) => e.id === editor.selected)
       : undefined;

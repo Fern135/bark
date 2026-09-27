@@ -63,7 +63,7 @@ export class EditorTools implements EditorToolsAPI {
         const material = new StandardMaterial(`editor-handle-${axis}-${side}`, this.layer.utilityLayerScene);
         material.disableLighting = true; material.emissiveColor = colors[i]; material.alpha = 0;
         mesh.material = material;
-        const visible = CreateSphere(`editor-resize-dot-${axis}-${side}`, { diameter: 0.55, segments: 16 }, this.layer.utilityLayerScene);
+        const visible = CreateSphere(`editor-resize-dot-${axis}-${side}`, { diameter: 0.7, segments: 16 }, this.layer.utilityLayerScene);
         visible.parent = mesh; visible.isPickable = false;
         const dotMaterial = material.clone(`editor-dot-${axis}-${side}`); dotMaterial.alpha = 1; visible.material = dotMaterial;
         const direction = Vector3.Zero(); direction[axis] = 1;
@@ -207,7 +207,9 @@ export class EditorTools implements EditorToolsAPI {
       const point = center.clone(); point[face.axis] = face.side > 0 ? this.bounds.max[face.axis] : this.bounds.min[face.axis];
       face.mesh.position.copyFrom(Vector3.TransformCoordinates(point, matrix)); face.mesh.rotationQuaternion = rotation(pose);
       const camera = this.scene.activeCamera;
-      const size = camera ? Math.max(0.08, Vector3.Distance(camera.globalPosition, face.mesh.position) * Math.tan(camera.fov / 2) * 44 / this.scene.getEngine().getRenderHeight()) : 0.25;
+      // A 36px hit target and 25px visible dot, consistent across zoom and DPI.
+      const height = this.canvas?.clientHeight || this.scene.getEngine().getRenderHeight();
+      const size = camera ? Math.max(0.08, Vector3.Distance(camera.globalPosition, face.mesh.position) * Math.tan(camera.fov / 2) * 72 / height) : 0.4;
       face.mesh.scaling.setAll(size);
       (face.visible.material as StandardMaterial).emissiveColor = this.hovered === face.mesh ? Color3.White() : colors[axes.indexOf(face.axis)];
     }

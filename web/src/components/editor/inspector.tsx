@@ -285,7 +285,7 @@ export function Inspector({
           className={s.delete}
           variant="subtle"
           size="small"
-          onClick={editor.remove}
+          onClick={() => editor.remove()}
         >
           Delete object
         </Button>

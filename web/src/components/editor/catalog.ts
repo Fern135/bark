@@ -8,6 +8,7 @@ import type {
 import type { GameDocument } from "@bark/scripting";
 import models from "../../../public/models/starter/manifest.json";
 import toys from "../../../public/models/toys/manifest.json";
+import byte from "../../../public/models/byte/manifest.json";
 export type Category = "Character" | "Tool" | "Object" | "Item";
 export const categories: Category[] = ["Character", "Tool", "Object", "Item"];
 export interface CatalogItem {
@@ -43,8 +44,8 @@ export const catalog: CatalogItem[] = entries.map(([id, name, category]) => ({
   category,
   color: "#8BCBB3",
   shape: category === "Character" ? "capsule" : "box",
-  size: id in toys ? toys[id as keyof typeof toys].size : models[id].size,
-  model: `/models/${id in toys ? "toys" : "starter"}/${id}.glb`,
+  size: id === "player" ? byte.size : id in toys ? toys[id as keyof typeof toys].size : models[id].size,
+  model: id === "player" ? "/models/byte/player.glb" : `/models/${id in toys ? "toys" : "starter"}/${id}.glb`,
 }));
 catalog.splice(4, 0, {
   id: "ball",

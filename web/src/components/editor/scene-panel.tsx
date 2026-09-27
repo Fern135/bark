@@ -85,10 +85,12 @@ export function ScenePanel({
               .find((tag) => tag.startsWith("starter:"))
               ?.slice(8);
             return (
-              <motion.button
+              <motion.div
                 key={entity.id}
                 whileHover={{ y: -3 }}
-                whileTap={{ scale: 0.96 }}
+                className={s.objectTile}
+              >
+              <button
                 className={`${s.objectCard} ${entity.id === editor.selected ? s.selected : ""}`}
                 aria-pressed={entity.id === editor.selected}
                 onClick={() => editor.setSelected(entity.id)}
@@ -104,7 +106,15 @@ export function ScenePanel({
                   name={entity.name}
                 />
                 <span>{entity.name}</span>
-              </motion.button>
+              </button>
+              <button
+                className={s.objectTrash}
+                aria-label={`Delete ${entity.name}`}
+                title={`Delete ${entity.name}`}
+                disabled={editor.lock}
+                onClick={() => editor.remove(entity.id)}
+              ><Icon name="trash" size={14} /></button>
+              </motion.div>
             );
           })}
       </div>

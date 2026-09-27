@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Popover from "@radix-ui/react-popover";
@@ -10,6 +9,10 @@ import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Collaborators } from "./collaborators";
 import { BlocksEditor, PythonEditor } from "./code-editors";
+import { ByteAssistant } from "./byte-assistant";
+import { useByteReview } from "./use-byte-review";
+import { useByteHints } from "./use-byte-hints";
+import type { ByteTip } from "./byte-tips";
 import { ScenePanel } from "./scene-panel";
 import { Inspector } from "./inspector";
 import { AddObject } from "./add-object";
@@ -44,6 +47,7 @@ export default function Editor({
     ...editor
   } = useEditor(initialGame, saveSeed, frameStarter);
   const [tab, setTab] = useState<Tab>("viewport");
+  const byteReview = useByteReview(editor.game, editor.selected, editor.diagnostic);
   const [adding, setAdding] = useState(false);
   const [replacing, setReplacing] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -62,9 +66,15 @@ export default function Editor({
   useEffect(() => { setViewportActive(tab === "viewport" && !adding && !drawer); }, [tab, adding, drawer, setViewportActive]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
-      if (tab !== "viewport" || adding || drawer || editor.lock || event.defaultPrevented) return;
+      if (adding || drawer || editor.lock || event.defaultPrevented) return;
       const target = event.target as HTMLElement;
       if (target.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [data-radix-popper-content-wrapper]')) return;
+      if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return;
+      if (event.key === "Delete" && !event.repeat && !event.ctrlKey && !event.metaKey && !event.altKey) {
+        if (editor.selected) { event.preventDefault(); editor.remove(); }
+        return;
+      }
+      if (tab !== "viewport") return;
       if (event.ctrlKey || event.metaKey) {
         if (event.code === "KeyZ" || event.code === "KeyY") { event.preventDefault(); editor.undoTransform(event.shiftKey || event.code === "KeyY"); }
         return;
@@ -78,6 +88,15 @@ export default function Editor({
     return () => window.removeEventListener("keydown", key);
   }, [tab, adding, drawer, editor]);
   const playing = ["running", "paused", "preparing"].includes(editor.status);
+  const byteAI = useByteHints(editor.game, editor.cloud.gameId, editor.localScriptRevision, editor.ready && !editor.busy && !playing, editor.documentGeneration, byteReview.diagnostic);
+  const aiTip: ByteTip | undefined = byteAI.suggestion ? {
+    kind: byteAI.suggestion.category === "bug" ? "error" : byteAI.suggestion.category,
+    message: byteAI.suggestion.message,
+    line: byteAI.suggestion.line ?? undefined,
+    blockId: byteAI.suggestion.blockId ?? undefined,
+    source: "ai",
+  } : undefined;
+  const byteTips = aiTip && !(aiTip.kind === "idea" && byteReview.tips.some((tip) => tip.kind !== "idea")) ? [aiTip, ...byteReview.tips] : byteReview.tips;
   useEffect(() => {
     let disposed = false;
     renderThumbnails()
@@ -387,13 +406,7 @@ export default function Editor({
                 : "Click the world to focus · Stop to return to editing"
               : editor.tools.tool === "resize" ? "Drag a face · Alt: center · Shift: proportions" : "Right drag: orbit · Scroll: zoom · Click: select"}
           </div>
-          <Image
-            className={s.mascot}
-            src="/images/editor/byte-peek.png"
-            alt=""
-            width={110}
-            height={110}
-          />
+          {tab === "viewport" && <ByteAssistant className={s.mascot} tips={byteTips} ai={byteAI} />}
         </section>
         {tab === "design" && (
           <motion.section className={s.studioPanel} aria-label="Model studio" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.24 }}>
@@ -407,13 +420,7 @@ export default function Editor({
                 Choose an object in Scene to customize it.
               </div>
             )}
-            <Image
-              className={s.mascot}
-              src="/images/editor/byte-peek.png"
-              alt=""
-              width={140}
-              height={140}
-            />
+            <ByteAssistant className={s.mascot} tips={byteTips} ai={byteAI} />
           </motion.section>
         )}
         {tab === "code" && (
@@ -433,16 +440,16 @@ export default function Editor({
                     key={editor.revision}
                     initial={editor.game.script.workspace}
                     disabled={editor.lock}
-                    diagnostic={editor.diagnostic}
-                    onChange={(workspace, before) =>
-                      editor.script({ language: "blocks", workspace }, before ? { language: "blocks", workspace: before } : undefined)
+                    diagnostic={byteReview.diagnostic}
+                    onChange={(workspace, before, local) =>
+                      editor.script({ language: "blocks", workspace }, before ? { language: "blocks", workspace: before } : undefined, !!local)
                     }
                   />
                 ) : (
                   <PythonEditor collaboration={editor.shared ? editor.live.client : null}
                     source={editor.game.script.source}
                     readOnly={editor.lock}
-                    diagnostic={editor.diagnostic}
+                    diagnostic={byteReview.diagnostic}
                     onChange={(source) => {
                       if (editor.game.script.language === "python")
                         editor.script({ ...editor.game.script, source });
@@ -450,13 +457,7 @@ export default function Editor({
                   />
                 ))}
             </div>
-            <Image
-              className={s.codeMascot}
-              src="/images/editor/byte-peek.png"
-              alt=""
-              width={128}
-              height={128}
-            />
+            <ByteAssistant className={s.codeMascot} tips={byteTips} ai={byteAI} />
           </motion.section>
         )}
         <aside className={s.sidebar}>
