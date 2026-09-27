@@ -76,7 +76,9 @@ Sources: [Oracle free limits](https://docs.oracle.com/en-us/iaas/Content/FreeTie
 
 Merge/review the intended application work and push one release commit first.
 Deployment refuses dirty checkouts and never commits or discards someone else's work.
-Use the existing repository; public clone commands below require no deploy token.
+Use the existing repository. If it is private, transfer an initial Git bundle over
+SSH instead of adding GitHub credentials to the VM. The deployment wrapper transfers
+subsequent releases as Git bundles and requires the local release to be clean and pushed.
 
 ```bash
 sudo mkdir -p /opt/bark
@@ -111,13 +113,15 @@ From a checkout containing these scripts, use Python 3.11+ and working SSH/sudo:
 py deploy/remote.py ubuntu@YOUR_VM_IP FULL_40_CHARACTER_RELEASE_SHA
 ```
 
-The wrapper checks out the pushed SHA on the VM, builds the four app images natively
+The wrapper verifies the pushed SHA locally, transfers missing Git objects over SSH,
+checks out that SHA on the VM, and builds the four app images natively
 for ARM64, starts PostgreSQL/Redis, stops public traffic and all app writers, uploads
 a compressed PostgreSQL backup, then copies that backup and production settings into
 `~/.bark-backups/` on **your computer**. It verifies the downloaded SHA256 before
 running migrations once, collecting admin static files, starting healthy containers,
 and testing public HTTPS. Treat local copies as secrets; use an encrypted disk and
-private user-only permissions (including the Windows folder ACL).
+private user-only permissions. The wrapper applies a user/SYSTEM-only Windows ACL
+before writing backup contents and production secrets.
 
 Images are tagged `bark-web:SHA`, `bark-server:SHA`, `bark-ws:SHA`, `bark-proxy:SHA`.
 Current/previous/pending releases are recorded in `/var/lib/bark/release.json`.
