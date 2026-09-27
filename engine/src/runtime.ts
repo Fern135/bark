@@ -19,12 +19,13 @@ import { Cameras } from "./cameras.js";
 import { Gameplay } from "./gameplay.js";
 import { Placement } from "./placement.js";
 import { EditorTools } from "./editor-tools.js";
+import { EditorPresence } from "./editor-presence.js";
 import { EngineError, cancelled } from "./errors.js";
 import { validateProject, settings as validateSettings } from "./project.js";
 import type { CameraSettings, ClockSnapshot, EngineCommand, EngineEvents, GameRuntime, ProjectDocument, RuntimeOptions, RuntimeState, SceneSettings, PropertyMap, RuntimeLimits } from "./types.js";
 
 type Havok = Awaited<ReturnType<typeof HavokPhysics>>;
-interface Bundle { scene: Scene; plugin: HavokPlugin; assets: Assets; world: RuntimeWorld; cameras: Cameras; ambient: HemisphericLight; sun: DirectionalLight; shadow: ShadowGenerator | null; settings: SceneSettings; tools?: EditorTools }
+interface Bundle { scene: Scene; plugin: HavokPlugin; assets: Assets; world: RuntimeWorld; cameras: Cameras; ambient: HemisphericLight; sun: DirectionalLight; shadow: ShadowGenerator | null; settings: SceneSettings; tools?: EditorTools; presence?: EditorPresence }
 const havokModules = new Map<string, Promise<Havok>>();
 function loadHavok(url: string): Promise<Havok> {
   let loading = havokModules.get(url);
@@ -52,6 +53,11 @@ export class Runtime implements GameRuntime {
   readonly placement: Placement;
   private toolOptions: Partial<import("./types.js").EditorToolOptions> | null = null;
   readonly editorTools = {
+    presence: (peers: import("./types.js").EditorPeer[]) => {
+      const bundle = this.bundle();
+      bundle.presence ??= new EditorPresence(bundle.scene, bundle.world);
+      bundle.presence.set(this.status === "editing" ? peers : []);
+    },
     configure: (options: Partial<import("./types.js").EditorToolOptions>) => {
       const bundle = this.bundle();
       bundle.tools ??= new EditorTools(bundle.scene, bundle.world, bundle.cameras, this.events, () => this.status === "editing", this.canvas);
@@ -75,7 +81,7 @@ export class Runtime implements GameRuntime {
     this.input = new Input(canvas, this.events);
     this.gameplay = new Gameplay(() => this.world, this.events, () => this.status, this.writable,
       () => { this.bundle(); return this.propertyValues; }, (values) => { this.propertyValues = values; if (this.status === "editing") this.authored!.properties = structuredClone(values); }, this.limits);
-    this.placement = new Placement(() => this.world, () => this.bundle().scene, () => this.exportProject(), () => { this.alive(); if (this.status !== "editing") throw new EngineError("INVALID_STATE", "Placement requires editing mode."); });
+    this.placement = new Placement(() => this.world, () => this.bundle().scene, () => this.exportProject(), () => { this.alive(); if (this.status !== "editing") throw new EngineError("INVALID_STATE", "Placement requires editing mode."); }, (ids) => this.events.emit("entityDuplicate", { ids }));
     if (canvas) { canvas.tabIndex = 0; engine.runRenderLoop(this.render); }
   }
   get state(): RuntimeState { return this.status; }
@@ -86,6 +92,8 @@ export class Runtime implements GameRuntime {
   get settings(): SceneSettings { return structuredClone(this.bundle().settings); }
   readonly assets = { list: () => structuredClone(this.bundle().assets.project.assets) };
   readonly cameras = {
+    pose: () => this.bundle().cameras.pose(),
+    project: (point: import("./types.js").Vec3) => this.bundle().cameras.project(point),
     frame: (id?: string, padding?: number) => { this.writable(); this.bundle().cameras.frame(id, padding); },
     get: () => this.bundle().cameras.get(),
     set: (value: Partial<CameraSettings>) => { this.writable(); this.bundle().cameras.set(value); if (this.status === "editing") this.authored!.cameras = this.bundle().cameras.get(); },
@@ -109,6 +117,7 @@ export class Runtime implements GameRuntime {
     if (this.sessionEpoch === epoch && this.state === "error") this.events.emit("error", { code: error.code, message: error.message }, () => this.sessionEpoch === epoch);
   }
   private resetSession(resetClock = true): void {
+    this.current?.presence?.set([]);
     this.current?.tools?.cancel();
     this.sessionEpoch++; this.events.clear(true); this.updates.clear();
     this.input.setEnabled(false); this.placement.cancel(); this.gameplay.reset(); this.accumulator = 0;
@@ -242,7 +251,7 @@ export class Runtime implements GameRuntime {
     }
     return result as C extends { type: "spawn" } ? string : C extends { type: "destroy" } ? boolean : void;
   }
-  private release(bundle: Bundle | null): void { if (!bundle) return; bundle.tools?.dispose(); bundle.cameras.dispose(); bundle.world.dispose(); bundle.shadow?.dispose(); bundle.assets.dispose(); bundle.scene.dispose(); }
+  private release(bundle: Bundle | null): void { if (!bundle) return; bundle.presence?.dispose(); bundle.tools?.dispose(); bundle.cameras.dispose(); bundle.world.dispose(); bundle.shadow?.dispose(); bundle.assets.dispose(); bundle.scene.dispose(); }
   dispose(): void {
     if (this.status === "disposed") return;
     this.invalidateLoad(); this.resetSession(); this.engine.stopRenderLoop(this.render); this.input.dispose(); this.release(this.current); this.current = null; this.authored = null; this.propertyValues = {}; this.engine.dispose(); this.transition("disposed", true); this.events.clear();

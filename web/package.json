@@ -17,6 +17,7 @@
   "dependencies": {
     "@bark/engine": "file:../engine",
     "@bark/scripting": "file:../scripting",
+    "@codemirror/commands": "6.11.1",
     "@codemirror/lang-python": "^6.2.1",
     "@codemirror/lint": "^6.9.7",
     "@codemirror/state": "^6.7.6",
@@ -28,6 +29,7 @@
     "blockly": "^13.3.0",
     "bootstrap": "^5.3.8",
     "codemirror": "^6.0.2",
+    "diff": "^8.0.4",
     "motion": "^13.4.4",
     "next": "16.3.6",
     "react": "19.2.8",

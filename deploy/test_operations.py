@@ -64,13 +64,18 @@ class OperationsTests(unittest.TestCase):
     def test_hostname_rejects_urls_ports_and_interpolation(self):
         for value in ('https://test.duckdns.org', 'test.duckdns.org:80', '$(whoami).duckdns.org', '*.duckdns.org',
                       'bark.127-0-0-1.sslip.io', 'bark.10-0-0-1.sslip.io', 'bark.999-1-1-1.sslip.io',
-                      'bark.164-152-22-118.sslip.io.evil.test'):
+                      'bark.164-152-22-118.sslip.io.evil.test', 'www.barkcade.club/path',
+                      'www.barkcade.club\nother.com', 'www..barkcade.club', 'www_barkcade.club',
+                      '-barkcade.club', 'barkcade-.club', 'localhost', '127.0.0.1',
+                      'a' * 64 + '.club', '.'.join(['a' * 63] * 4) + '.club'):
             with self.assertRaises(ValueError):
                 bark.validate_domain(value)
 
-    def test_hostname_accepts_public_automatic_dns_and_duckdns(self):
+    def test_hostname_accepts_custom_domains_automatic_dns_and_duckdns(self):
         bark.validate_domain('bark.164-152-22-118.sslip.io')
         bark.validate_domain('bark-tree.duckdns.org')
+        bark.validate_domain('www.barkcade.club')
+        bark.validate_domain('barkcade.club')
 
     def test_failed_backup_prevents_migration_and_preserves_pending_state(self):
         bark.save_state({'built': self.prod.sha, 'active': 'b' * 40})

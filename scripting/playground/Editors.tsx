@@ -28,7 +28,7 @@ export function BlocksEditor({
   useEffect(() => {
     if (validateBlockReferences(initial).length) return;
     const ws = Blockly.inject(container.current!, {
-      toolbox,
+      toolbox: { ...toolbox, contents: toolbox.contents.map((category) => "contents" in category ? { ...category, contents: category.contents?.filter((block) => block.type !== "bark_this") } : category) },
       renderer: "zelos",
       sounds: false,
       trashcan: true,

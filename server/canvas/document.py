@@ -14,7 +14,7 @@ from django.db import transaction
 
 from .models import Asset, Entity, Game, GameCameras, GameInput, GameScript, GameSettings, Material, Prefab
 
-DOCUMENT_VERSION = 1
+DOCUMENT_VERSION = 2
 PROJECT_VERSION = 1
 MAX_ENTITIES = 2000            # the engine's default entity limit
 MAX_LIBRARY_ITEMS = 500        # per list (assets, materials, prefabs)
@@ -147,7 +147,7 @@ def _validate_unique_list(items, what, limit, validate_item):
 
 def validate_document(document):
     validate_object(document, "document")
-    _require(document.get("version") == DOCUMENT_VERSION, f"document version must be {DOCUMENT_VERSION}")
+    _require(document.get("version") in (1, DOCUMENT_VERSION), f"document version must be {DOCUMENT_VERSION}")
     project = validate_object(document.get("project"), "project")
     _require(project.get("version", PROJECT_VERSION) == PROJECT_VERSION, f"project.version must be {PROJECT_VERSION}")
     validate_name(project.get("name"))
@@ -163,6 +163,13 @@ def validate_document(document):
     validate_object(project.get("cameras", {}), "project.cameras")
     validate_input(project.get("input", {}))
     validate_script(document.get("script"))
+    scripts = document.get("objectScripts", {})
+    validate_object(scripts, "objectScripts")
+    _require("objectScripts" not in document or document["version"] == 2, "Object scripts require version 2")
+    ids = {e["id"] for e in entities}
+    for owner, script in scripts.items():
+        _require(owner in ids, f"Script owner {owner!r} does not exist")
+        validate_script(script)
     return document
 
 
@@ -195,7 +202,7 @@ def to_document(game):
         "input": game.input.data,
         **game.project_extra,
     }
-    return {"version": game.document_version, "project": project, "script": script_to_json(game.script)}
+    return {"version": game.document_version, "project": project, "script": script_to_json(game.script), **({"objectScripts": game.object_scripts} if game.document_version >= 2 else {})}
 
 
 # ---- JSON -> rows -------------------------------------------------------------------------
@@ -225,6 +232,7 @@ def save_document(game, document):
     project = document["project"]
 
     game.document_version = document["version"]
+    game.object_scripts = document.get("objectScripts", {})
     game.project_version = project.get("version", PROJECT_VERSION)
     game.name = validate_name(project["name"])
     game.properties = project.get("properties", {})

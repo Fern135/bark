@@ -12,7 +12,7 @@ export class Cameras {
   private follow: FreeCamera;
   private value: CameraSettings;
   private toolsEnabled = false;
-  private controlMode = "";
+private controlState = "";
   constructor(private readonly scene: Scene, private readonly world: World, settings: CameraSettings, private readonly canvas?: HTMLCanvasElement) {
     this.value = structuredClone(settings);
     this.editor = new ArcRotateCamera("editor", -Math.PI / 2.5, Math.PI / 3, 20, vector(settings.target), scene);
@@ -22,7 +22,19 @@ export class Cameras {
     this.set(settings);
   }
   get(): CameraSettings { return structuredClone(this.value); }
+  pose() {
+    const camera = this.value.active === "follow" ? this.follow : this.editor;
+    return { position: plain(camera.globalPosition), target: plain(camera.getTarget()) };
+  }
+  project(point: Vec3) {
+    const camera = this.scene.activeCamera ?? this.editor, engine = this.scene.getEngine();
+    const p = Vector3.Project(vector(point), Matrix.Identity(), this.scene.getTransformMatrix(), camera.viewport.toGlobal(engine.getRenderWidth(), engine.getRenderHeight()));
+    return { x: p.x / engine.getRenderWidth(), y: p.y / engine.getRenderHeight(), visible: p.z >= 0 && p.z <= 1 && p.x >= 0 && p.y >= 0 && p.x <= engine.getRenderWidth() && p.y <= engine.getRenderHeight() };
+  }
   editorControls(enabled: boolean, dragging = false): void {
+    const state = `${enabled}:${dragging}:${this.value.active}`;
+    if (state === this.controlState) return;
+    this.controlState = state;
     this.toolsEnabled = enabled;
     const mode = `${enabled}:${dragging}:${this.value.active}`;
     // Reattaching during pointerdown cancels Babylon's active mouse gesture.
@@ -30,6 +42,8 @@ export class Cameras {
     this.controlMode = mode;
     const pointers = this.editor.inputs.attached.pointers as import("@babylonjs/core/Cameras/Inputs/arcRotateCameraPointersInput.js").ArcRotateCameraPointersInput;
     pointers.buttons = enabled ? [1, 2] : [0, 1, 2];
+    const rotate = this.editor.movement.input.getEntry("pointer", "rotate", { modifiers: {} });
+    if (rotate) rotate.button = enabled ? 2 : 0;
     this.editor.detachControl();
     if (!dragging && this.value.active === "editor" && this.canvas) {
       this.editor.movement.input.resetInputMap();
@@ -70,6 +84,7 @@ export class Cameras {
     const next = { ...this.value, ...structuredClone(changes) }; validateCamera(next);
     this.value = next; this.editor.fov = this.follow.fov = next.fieldOfView * Math.PI / 180;
     if (changes.target) this.editor.setTarget(vector(next.target));
+this.editor.detachControl(); this.controlState = ""
     this.editorControls(this.toolsEnabled);
     this.scene.activeCamera = next.active === "editor" ? this.editor : this.follow;
     this.update();

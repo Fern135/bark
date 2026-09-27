@@ -165,7 +165,7 @@ test("block conversion retains a detached backup and Python edits do not change 
   );
 });
 test("unsupported document versions and languages fail clearly", () => {
-  assert.throws(() => validateDocument({ ...doc, version: 2 }), /Unsupported/);
+  assert.throws(() => validateDocument({ ...doc, version: 99 }), /Unsupported/);
   assert.throws(
     () => validateDocument({ ...doc, script: { language: "lua", source: "" } }),
     /Supported/,

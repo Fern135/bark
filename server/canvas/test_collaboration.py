@@ -82,6 +82,26 @@ class CollaborationTests(CanvasTestCase):
         self.assertEqual(to_document(Game.objects.get(pk=self.id))["project"]["entities"][0]["name"], "Changed")
         self.assertEqual(len(service.replay(user, self.id, self.game["revision"])), 1)
 
+    def test_python_source_commits_without_exclusive_lease(self):
+        self.join(self.enable())
+        user = self.user.user_id
+        original = service.snapshot(user, self.id)["document"]
+        service.acquire(user, self.id, self.conn, ["script"])
+        frame = service.commit(user, self.id, self.conn, str(uuid.uuid4()), self.game["revision"], [{"op": "set", "resource": "script", "before": original["script"], "value": {"language": "python", "source": "# start\n"}}])
+        service.release(user, self.id, self.conn)
+        op = {"op": "set", "resource": "source", "before": "# start\n", "value": "# start\n# owner\n"}
+        first = service.commit(user, self.id, self.conn, str(uuid.uuid4()), frame["rev"], [op])
+        with self.assertRaises(OpError) as error:
+            service.commit(self.editor.user_id, self.id, self.other, str(uuid.uuid4()), frame["rev"], [op])
+        self.assertEqual(error.exception.code, "REV_MISMATCH")
+        op = {**op, "before": op["value"], "value": op["value"] + "# peer\n"}
+        service.commit(self.editor.user_id, self.id, self.other, str(uuid.uuid4()), first["rev"], [op])
+        self.assertEqual(service.snapshot(user, self.id)["document"]["script"]["source"], op["value"])
+        service.acquire(user, self.id, self.conn, ["*"])
+        with self.assertRaises(OpError) as error:
+            service.commit(self.editor.user_id, self.id, self.other, str(uuid.uuid4()), first["rev"] + 1, [{**op, "before": op["value"]}])
+        self.assertEqual(error.exception.code, "LOCK_HELD")
+
     def test_stale_revision_and_before_value(self):
         self.enable(); user = self.user.user_id
         service.acquire(user, self.id, self.conn, ["entity:one"])

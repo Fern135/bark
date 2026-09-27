@@ -18,6 +18,7 @@ import {
 
 Blockly.setLocale(En as unknown as Record<string, string>);
 export interface BlockChoices {
+  ownerId?: string | null;
   entities: [string, string][];
   prefabs: [string, string][];
   actions: [string, string][];
@@ -31,9 +32,13 @@ let choices: BlockChoices = {
 export function setBlockChoices(value: BlockChoices) {
   choices = value;
 }
-registerFeatureBlocks(() =>
-  choices.entities.length ? choices.entities : [["None available", ""]],
-);
+export const SELF = "$this";
+export const hasObjectContext = () => !!choices.ownerId;
+const entityOptions = (): [string, string][] => [
+  ...(choices.ownerId ? [["this object", SELF] as [string, string]] : []),
+  ...(choices.entities.length ? choices.entities : [["None available", ""] as [string, string]]),
+];
+registerFeatureBlocks(entityOptions);
 Blockly.Blocks.bark_property_key = {
   init(this: Blockly.Block) {
     this.appendDummyInput()
@@ -97,6 +102,7 @@ export function validateBlockReferences(
       inputs?: Record<string, { block?: unknown; shadow?: unknown }>;
       next?: { block?: unknown; shadow?: unknown };
     };
+    if (block.type === "bark_this" && !available.ownerId) diagnostics.push({ blockId: block.id, message: "This object is only available in object code." });
     const reference =
       block.type &&
       Object.hasOwn(referenceFields, block.type) &&
@@ -106,6 +112,7 @@ export function validateBlockReferences(
         id = block.fields?.[field];
       if (
         id !== undefined &&
+        !(kind === "entities" && id === SELF && available.ownerId) &&
         !available[kind].some(([, option]) => option === id)
       )
         diagnostics.push({
@@ -130,7 +137,7 @@ const dropdown = (kind: "entities" | "prefabs" | "actions") => ({
   name:
     kind === "actions" ? "ACTION" : kind === "prefabs" ? "PREFAB" : "ENTITY",
   options: () =>
-    choices[kind].length ? choices[kind] : [["None available", ""]],
+    kind === "entities" ? entityOptions() : choices[kind].length ? choices[kind] : [["None available", ""]],
 });
 const value = (name: string, check?: string | string[]) => ({
   type: "input_value",
@@ -145,6 +152,7 @@ const select = (name: string, options: string[]) => ({
 });
 const action = { previousStatement: null, nextStatement: null, colour: 170 };
 Blockly.defineBlocksWithJsonArray([
+  { type: "bark_this", message0: "this object", output: "Entity", colour: 170 },
   {
     type: "bark_start",
     message0: "when game starts %1 %2",
@@ -393,6 +401,7 @@ export const toolbox = {
       name: "World",
       colour: "170",
       contents: [
+        item("bark_this"),
         item("bark_entity"),
         item("bark_move", vectorInputs),
         item("bark_forward", { ENTITY: entity(), VALUE: shadow(1) }),
@@ -484,6 +493,7 @@ export function compileBlocks(
     script.workspace.blocks as { blocks?: Saved[] } | undefined
   )?.blocks;
   const savedRoots = Array.isArray(rootsValue) ? rootsValue : [];
+  if (!savedRoots.length && !diagnostics.length) return { python: "", sourceMap: {}, diagnostics: [] };
   const signatures = new Map<string, number>();
   for (const root of savedRoots)
     if (root.type?.startsWith("procedures_def")) {
@@ -621,8 +631,10 @@ function compileWorkspace(script: ScriptDocument): Compilation {
         return `(${input(b, "A")} ${field(b, "OP") === "AND" ? "and" : "or"} ${input(b, "B")})`;
       case "logic_negate":
         return `(not ${input(b, "BOOL")})`;
+      case "bark_this":
+        return choices.ownerId ? "this" : issue(b, "This object is only available in object code.");
       case "bark_entity":
-        return `game.entity(${JSON.stringify(field(b, "ENTITY"))})`;
+        return field(b, "ENTITY") === SELF ? "this" : `game.entity(${JSON.stringify(field(b, "ENTITY"))})`;
       case "bark_other":
         return ["bark_touch", "bark_touch_end"].includes(context)
           ? "game.entity(other_id)"
@@ -825,11 +837,11 @@ function compileWorkspace(script: ScriptDocument): Compilation {
         argument = "";
       switch (root.type) {
         case "bark_touch_end":
-          decorator = `game.on_touch_end(${JSON.stringify(field(root, "ENTITY"))})`;
+          decorator = `game.on_touch_end(${field(root, "ENTITY") === SELF ? "this.id" : JSON.stringify(field(root, "ENTITY"))})`;
           argument = "other_id";
           break;
         case "bark_respawn_event":
-          decorator = `game.on_respawn(${JSON.stringify(field(root, "ENTITY"))})`;
+          decorator = `game.on_respawn(${field(root, "ENTITY") === SELF ? "this.id" : JSON.stringify(field(root, "ENTITY"))})`;
           break;
         case "bark_message":
           decorator = `game.on_message(${JSON.stringify(field(root, "NAME"))})`;
@@ -846,11 +858,11 @@ function compileWorkspace(script: ScriptDocument): Compilation {
           argument = "state";
           break;
         case "bark_touch":
-          decorator = `game.on_touch(${JSON.stringify(field(root, "ENTITY"))})`;
+          decorator = `game.on_touch(${field(root, "ENTITY") === SELF ? "this.id" : JSON.stringify(field(root, "ENTITY"))})`;
           argument = "other_id";
           break;
         case "bark_interact":
-          decorator = `game.on_interact(${JSON.stringify(field(root, "ENTITY"))})`;
+          decorator = `game.on_interact(${field(root, "ENTITY") === SELF ? "this.id" : JSON.stringify(field(root, "ENTITY"))})`;
           argument = "actor_id";
           break;
         default:

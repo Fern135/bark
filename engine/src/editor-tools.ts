@@ -23,7 +23,7 @@ const colors = [Color3.FromHexString("#ef6461"), Color3.FromHexString("#57b98a")
 const defaults: EditorToolOptions = { enabled: false, selected: null, tool: "move", space: "world", snapping: true, moveSnap: 0.5, resizeSnap: 0.25, rotateSnap: 15 };
 const rotation = (t: Transform) => new Quaternion(t.rotation.x, t.rotation.y, t.rotation.z, t.rotation.w);
 
-export class EditorTools implements EditorToolsAPI {
+export class EditorTools implements Omit<EditorToolsAPI, "presence"> {
   private options = { ...defaults };
   private layer: UtilityLayerRenderer;
   private proxy: TransformNode;
@@ -54,6 +54,7 @@ export class EditorTools implements EditorToolsAPI {
       const moveAxis = this.move[`${axis}Gizmo`];
       for (const gizmo of [moveAxis, this.move[`${axis}PlaneGizmo`], this.rotate[`${axis}Gizmo`]]) {
         gizmo.dragBehavior.dragButtons = [0];
+        gizmo.dragBehavior.detachCameraControls = false;
         gizmo.coloredMaterial.disableLighting = true; gizmo.coloredMaterial.emissiveColor = colors[i];
         gizmo.hoverMaterial.disableLighting = true; gizmo.hoverMaterial.emissiveColor = Color3.White();
       }
@@ -145,7 +146,7 @@ export class EditorTools implements EditorToolsAPI {
     for (const key of ["moveSnap", "resizeSnap", "rotateSnap"] as const) if (options[key] !== undefined && (!Number.isFinite(options[key]) || options[key]! <= 0)) throw new Error("Snap increments must be positive.");
     if (Object.entries(options).some(([key, value]) => this.options[key as keyof EditorToolOptions] !== value)) this.cancel();
     this.options = { ...this.options, ...options };
-    this.cameras.editorControls(this.active()); this.render();
+    this.cameras.editorControls(this.editing(), !!this.drag); this.render();
   }
   private active(): boolean { return this.options.enabled && this.editing(); }
   private begin(): void {
@@ -173,7 +174,7 @@ export class EditorTools implements EditorToolsAPI {
       }
       const transform = drag.transaction.commit();
       this.events.emit("editorTransform", { phase: "commit", entityId: drag.id, before: drag.transaction.before, transform, label: "" });
-    } finally { this.cameras.editorControls(this.active()); }
+    } finally { this.cameras.editorControls(this.editing()); }
   }
   cancel(): void {
     const drag = this.drag; this.drag = null;
@@ -181,7 +182,7 @@ export class EditorTools implements EditorToolsAPI {
       drag.transaction.cancel(); this.move.releaseDrag(); this.rotate.releaseDrag(); this.faces.forEach((face) => face.behavior.releaseDrag());
       this.events.emit("editorTransform", { phase: "cancel", entityId: drag.id, before: drag.transaction.before, transform: drag.transaction.before, label: "" });
     }
-    this.cameras.editorControls(this.active());
+    this.cameras.editorControls(this.editing());
   }
   private render(): void {
     const candidate = this.active() && this.options.selected && this.world.identity(this.options.selected) ? this.world.get(this.options.selected) : undefined;

@@ -20,13 +20,13 @@ async function review(body: ByteRequest, signal: AbortSignal): Promise<ByteRespo
   }
 }
 
-export function useByteHints(game: Game, projectId: string, localRevision: number, active: boolean, revision: number, diagnostic?: Diagnostic) {
+export function useByteHints(game: Game, projectId: string, localRevision: number, active: boolean, revision: number, scriptId: string | null = null, diagnostic?: Diagnostic) {
   const { user } = useSession();
   const [controller] = useState(() => new ByteHints(review));
   const [preferences, setPreferences] = useState<Record<string, boolean>>({});
   // Local diagnostics arrive after the edit. Update the snapshot without
   // cancelling the review already scheduled for that same code revision.
-  const key = useMemo(() => byteKey(game), [game]);
+  const key = useMemo(() => byteKey(game, scriptId), [game, scriptId]);
   const userId = user?.user_id;
   const enabled = !!userId && preferences[userId] !== false;
   const suggestion = useSyncExternalStore(controller.subscribe, controller.getSnapshot, () => null);
@@ -40,12 +40,11 @@ export function useByteHints(game: Game, projectId: string, localRevision: numbe
     queueMicrotask(() => setPreferences((old) => ({ ...old, [userId]: value })));
   }, [preferenceKey, userId]);
   useEffect(() => {
-    controller.update({ identity: `${userId ?? "guest"}:${projectId}:${revision}`, key, localRevision, enabled: enabled && !!userId && preferences[userId] !== undefined, active, snapshot: () => {
-      const snapshot = buildByteSnapshot(game, true);
-      if (snapshot && diagnostic) snapshot.diagnostics = [diagnostic, ...snapshot.diagnostics];
-      return snapshot;
-    } });
-  }, [controller, game, key, localRevision, active, enabled, userId, preferences, projectId, revision, diagnostic]);
+controller.update({ identity: JSON.stringify([userId ?? "guest", projectId, revision, scriptId]), key, localRevision, enabled: enabled && !!userId && preferences[userId] !== undefined, active, snapshot: () => {
+  const snapshot = buildByteSnapshot(game, scriptId);
+  if (snapshot && diagnostic) snapshot.diagnostics = [diagnostic, ...snapshot.diagnostics];
+  return snapshot;
+} });
   useEffect(() => {
     let pointer = false, composing = false;
     const refresh = () => controller.activity(pointer || composing || document.hidden || !!document.querySelector('[role="dialog"], [role="alertdialog"], [data-radix-popper-content-wrapper]'));

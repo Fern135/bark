@@ -363,6 +363,8 @@ def entity(request, game_id, entity_id):
         if request.method == "DELETE":
             deleted = [entity_id, *descendants_of(game, entity_id)]
             game.entities.filter(item_id__in=deleted).delete()
+            game.object_scripts = {key: value for key, value in game.object_scripts.items() if key not in deleted}
+            game.save(update_fields=["object_scripts"])
             game.touch()
             return JsonResponse({"revision": game.revision, "deleted": deleted})
 

@@ -39,6 +39,7 @@ export class RuntimeWorld implements World {
   beforeMutation: (id: string, changes?: EntityChanges) => void = () => {};
   private epoch = 0;
   private editorPreview: { id: string; before: Transform; cancel(): void } | null = null;
+  private peerPreviews = new Map<string, Transform>();
   readonly transforms: TransformAPI;
   readonly physics: PhysicsAPI;
   constructor(private readonly scene: Scene, private readonly plugin: HavokPlugin, private readonly assets: Assets,
@@ -169,9 +170,26 @@ export class RuntimeWorld implements World {
     for (const e of this.entries.values()) this.buildBody(e);
     this.changed();
   }
-  definitions(): EntityDefinition[] { this.active(); return [...this.entries.values()].map((e) => ({ ...structuredClone(e.definition), transform: this.editorPreview?.id === e.definition.id ? structuredClone(this.editorPreview.before) : pose(e.node) })); }
+  definitions(): EntityDefinition[] { this.active(); return [...this.entries.values()].map((e) => ({ ...structuredClone(e.definition), transform: this.editorPreview?.id === e.definition.id ? structuredClone(this.editorPreview.before) : structuredClone(this.peerPreviews.get(e.definition.id) ?? pose(e.node)) })); }
+  /** Remote gestures affect rendered nodes only, just like a local gizmo preview. */
+  previewPeers(previews: { id: string; transform: Transform }[]): void {
+    for (const [id, before] of this.peerPreviews) {
+      const entry = this.entries.get(id);
+      if (entry) { entry.node.position.copyFrom(vector(before.position)); entry.node.rotationQuaternion = quaternion(before.rotation); entry.node.scaling.copyFrom(vector(before.scale)); entry.node.computeWorldMatrix(true); }
+    }
+    this.peerPreviews.clear();
+    if (this.scene.physicsEnabled) return;
+    for (const { id, transform } of previews) {
+      const entry = this.entries.get(id);
+      if (!entry || this.editorPreview?.id === id || this.peerPreviews.has(id)) continue;
+      try { validateTransform(transform); } catch { continue; }
+      this.peerPreviews.set(id, pose(entry.node));
+      entry.node.position.copyFrom(vector(transform.position)); entry.node.rotationQuaternion = quaternion(transform.rotation); entry.node.scaling.copyFrom(vector(transform.scale)); entry.node.computeWorldMatrix(true);
+    }
+  }
   /** Editor-only presentation transaction. Physics and authored definitions change only on commit. */
   beginEditorTransform(id: string) {
+    this.previewPeers([]);
     const e = this.find(id), before = pose(e.node);
     check(!this.editorPreview && !this.scene.physicsEnabled, "Transform preview requires an idle editing world.");
     let closed = false;
@@ -233,6 +251,7 @@ export class RuntimeWorld implements World {
     return this.insertSubtree(copies);
   }
   update(id: string, changes: EntityChanges): void {
+    this.previewPeers([]);
     this.editorPreview?.cancel();
     this.writable(); const e = this.find(id), current = this.get(id);
     const next = defineEntity({ ...current, ...changes, id, transform: { ...current.transform, ...changes.transform },
@@ -274,6 +293,7 @@ export class RuntimeWorld implements World {
     return { position: plain(p), rotation: { ...plain(q), w: q.w }, scale: plain(s) };
   }
   private setTransform(id: string, changes: Partial<Transform>, space: "local" | "world"): void {
+    this.previewPeers([]);
     const e = this.get(id); const t = { ...(space === "world" ? e.worldTransform : e.transform), ...changes }; validateTransform(t);
     this.update(id, { transform: space === "world" ? this.localPose(t, e.parentId) : t });
   }
@@ -312,7 +332,7 @@ export class RuntimeWorld implements World {
     }
   }
   private release(e: Entry): void { this.clearBody(e); e.visual?.dispose(); e.ownedMaterial?.dispose(); e.node.dispose(); }
-  private clear(): void { this.epoch++; for (const e of this.entries.values()) e.node.parent = null; for (const e of this.entries.values()) this.release(e); this.entries.clear(); this.contacts.clear(); this.pending = []; }
+  private clear(): void { this.peerPreviews.clear(); this.epoch++; for (const e of this.entries.values()) e.node.parent = null; for (const e of this.entries.values()) this.release(e); this.entries.clear(); this.contacts.clear(); this.pending = []; }
   checkCapacity(count: number, replace = false): void { if ((replace ? 0 : this.entries.size) + count > this.entityLimit) throw new EngineError("LIMIT_EXCEEDED", `Entity limit is ${this.entityLimit}.`); }
   /** Internal continuous pose update; never changes authored data or rebuilds a body. */
   drive(id: string, position: Vec3, rotation: Transform["rotation"]): void {

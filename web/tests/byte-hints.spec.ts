@@ -15,7 +15,9 @@ async function open(page: Page) {
   await page.goto("/editor");
   await expect(page.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Code", exact: true }).click();
-  await expect(page.locator("[data-byte-assistant]")).toBeVisible();
+await page.getByLabel("Code browser").selectOption("");
+await expect(page.locator("[data-byte-assistant]")).toBeVisible();
+await expect(page.getByRole("checkbox", { name: "Byte hints" })).toBeChecked();
 }
 
 async function python(page: Page) {
@@ -55,8 +57,10 @@ test("Python hints debounce, preserve focus, dismiss, fit mobile and remember th
   await byte.getByRole("button", { name: "Turn off AI tips" }).click();
   await page.goto("/editor");
   await page.getByRole("button", { name: "Code", exact: true }).click();
-  await page.locator("[data-byte-assistant]").getByRole("button", { name: /Byte assistant/ }).click();
-  await expect(page.getByRole("button", { name: "Turn on AI tips" })).toBeVisible();
+await page.getByLabel("Code browser").selectOption("");
+await page.locator("[data-byte-assistant]").getByRole("button", { name: /Byte assistant/ }).click();
+await expect(page.getByRole("button", { name: "Turn on AI tips" })).toBeVisible();
+await expect(page.getByRole("checkbox", { name: "Byte hints" })).not.toBeChecked();
 });
 
 test("Blocks load and root movement are quiet; changed text supplies block context", async ({ page }) => {

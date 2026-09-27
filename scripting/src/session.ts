@@ -1,6 +1,7 @@
 import type {
   Clock,
   Compilation,
+  CompiledProgram,
   Diagnostic,
   EngineAdapter,
   GameplayEvent,
@@ -20,9 +21,10 @@ export function createScriptingSession(
   let status: SessionStatus = "idle",
     generation = 0,
     worker: WorkerPort | undefined;
-  let compiled: Compilation = { python: "", sourceMap: {}, diagnostics: [] };
+  let compiled: Compilation | CompiledProgram = { python: "", sourceMap: {}, diagnostics: [] };
   let pendingPrepare:
     { resolve(): void; reject(error: Error): void } | undefined;
+  const destroyed = new Set<string>();
   let commands: Extract<WorkerMessage, { type: "request" }>[] = [];
   let tickInFlight = false,
     pendingTick: Clock | undefined,
@@ -58,6 +60,7 @@ export function createScriptingSession(
     worker?.terminate();
     worker = undefined;
     commands = [];
+    destroyed.clear();
     pendingTick = undefined;
     tickInFlight = false;
     eventsInFlight = 0;
@@ -69,7 +72,7 @@ export function createScriptingSession(
   function fail(diagnostic: Diagnostic) {
     if (status === "disposed" || status === "error") return;
     const blockId = diagnostic.line
-      ? compiled.sourceMap[diagnostic.line]
+      ? ("scripts" in compiled ? compiled.scripts.find((s) => s.scriptId === (diagnostic.scriptId ?? null)) : compiled)?.sourceMap[diagnostic.line]
       : undefined;
     clear(diagnostic.message);
     if (adapter.state === "running") lifecycle(() => adapter.pause());
@@ -88,6 +91,7 @@ export function createScriptingSession(
   }
   function event(event: GameplayEvent) {
     if (status !== "running") return;
+    if (event.type === "destroy") destroyed.add(event.entityId);
     if (++eventsInFlight > SESSION_LIMITS.events) {
       fail({
         message: "Script event queue overflow. Add waits or simplify handlers.",
@@ -127,7 +131,7 @@ export function createScriptingSession(
             fn({
               ...message.snapshot,
               blockId: message.snapshot.line
-                ? compiled.sourceMap[message.snapshot.line]
+                ? ("scripts" in compiled ? compiled.scripts.find((s) => s.scriptId === (message.snapshot.scriptId ?? null)) : compiled)?.sourceMap[message.snapshot.line]
                 : undefined,
             }),
           );
@@ -206,6 +210,7 @@ export function createScriptingSession(
         post({
           type: "prepare",
           python: compilation.python,
+          scripts: "scripts" in compilation ? compilation.scripts : undefined,
           runtimeUrl: new URL(options.runtimeUrl ?? "/pyodide/", base).href,
           inspect,
         } as Omit<HostMessage, "session">);
@@ -241,6 +246,7 @@ export function createScriptingSession(
                     error,
                   } as Omit<HostMessage, "session">);
                 };
+                if (command.scriptId && destroyed.has(command.scriptId)) { respond(undefined, "The script owner was destroyed."); continue; }
                 const result = adapter.execute(command.operation);
                 if (
                   result &&

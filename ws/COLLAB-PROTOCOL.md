@@ -1,7 +1,7 @@
 # Bark collaboration protocol (v1)
 
 > Legacy standalone protocol, retained as reference for its block algebra tests.
-> The active `/ws/` endpoint uses [Canvas workspace protocol v2](WORKSPACE-PROTOCOL.md).
+> The active `/ws/` endpoint uses [Canvas workspace protocol v3](WORKSPACE-PROTOCOL.md).
 > Legacy `join {doc:"new"}` and ID-based automatic membership are disabled.
 
 One document, many editors, server-authoritative. The server owns the truth, clients

@@ -75,7 +75,7 @@ async def socket(websocket: WebSocket) -> None:
     # Identity comes from the token and nowhere else; a user id in a client frame is ignored.
     conn = Connection(websocket, claims["sub"])
     conn.start()
-    conn.send({"type": "ready", "protocol": 2, "user": conn.user_id, "conn": conn.id})
+    conn.send({"type": "ready", "protocol": 3, "user": conn.user_id, "conn": conn.id})
 
     try:
         while True:

@@ -31,6 +31,58 @@ async function fixture(t, p = project(), limits = {}) {
 }
 function near(actual, expected, tolerance = 0.07) { assert.ok(Math.abs(actual - expected) < tolerance, `${actual} should be near ${expected}`); }
 
+test("collaborator cameras and transform previews are detached from authored world and physics", async (t) => {
+  const { runtime: r } = await fixture(t);
+  const original = r.exportProject(), body = r.world.identity("box").body;
+  const transform = { ...r.world.get("box").transform, position: v(12, 4, 0) };
+  const peer = { id: "peer", color: "#7555dd", camera: { position: v(4, 5, 6), target: v(0, 0, 0) }, selected: "box", preview: { id: "box", transform } };
+  r.editorTools.presence([peer]);
+  const meshes = r.current.scene.meshes.filter((mesh) => mesh.name.startsWith("presence:"));
+  assert.equal(meshes.length, 2);
+  assert.ok(meshes.every((mesh) => !mesh.isPickable));
+  assert.equal(r.world.get("box").transform.position.x, 12);
+  r.editorTools.presence([{ ...peer, camera: { ...peer.camera, position: v(8, 5, 6) } }]);
+  assert.deepEqual(r.exportProject(), original);
+  assert.equal(r.world.identity("box").body, body);
+  assert.equal(r.current.scene.meshes.filter((mesh) => mesh.name.startsWith("presence:")).length, 2);
+  const pose = r.cameras.pose(); pose.position.x = 999;
+  assert.notEqual(r.cameras.pose().position.x, 999);
+  r.editorTools.presence([]);
+  assert.equal(r.world.get("box").transform.position.x, -2);
+  assert.ok(meshes.every((mesh) => mesh.isDisposed()));
+  r.editorTools.presence([peer]);
+  r.world.update("ball", { name: "Still authored" });
+  assert.equal(r.exportProject().entities.find((e) => e.id === "box").transform.position.x, -2);
+  r.editorTools.presence([peer]);
+  r.transforms.set("box", { position: v(7, 4, 0) });
+  r.editorTools.presence([]);
+  assert.equal(r.world.get("box").transform.position.x, 7);
+  r.editorTools.presence([peer]);
+  r.play();
+  assert.equal(r.world.get("box").transform.position.x, 7);
+});
+
+test("unchanged collaboration leases do not detach an active camera gesture", async (t) => {
+  const { runtime: r } = await fixture(t);
+  r.editorTools.configure({ enabled: true, selected: "box" });
+  const camera = r.current.cameras.editor;
+  assert.equal(camera.movement.input.getEntry("pointer", "rotate", { modifiers: {} }).button, 2);
+  let detachments = 0;
+  const detach = camera.detachControl.bind(camera);
+  camera.detachControl = () => { detachments++; detach(); };
+  r.editorTools.configure({ enabled: true, selected: "box" });
+  assert.equal(detachments, 0);
+  r.current.tools.begin();
+  assert.equal(detachments, 1);
+  r.editorTools.configure({ enabled: true, selected: "box" });
+  assert.equal(detachments, 1);
+  r.editorTools.cancel();
+  assert.equal(detachments, 2);
+  r.editorTools.configure({ enabled: false });
+  assert.equal(detachments, 2);
+  assert.equal(camera.movement.input.getEntry("pointer", "rotate", { modifiers: {} }).button, 2);
+});
+
 test("face resizing anchors rotated off-center bounds and supports center, uniform, snap and minimum size", () => {
   const q = Quaternion.RotationYawPitchRoll(0.8, 0.3, 0);
   const start = { position: v(3, 4, 5), rotation: { x: q.x, y: q.y, z: q.z, w: q.w }, scale: v(2, 1, 3) };
@@ -465,7 +517,7 @@ test("placement snaps, rejects penetration, duplicates with fresh IDs and cleans
   let preview=r.placement.aim(v(5.2,10,5.3),v(5.2,-2,5.3));assert.equal(preview.valid,true);near(preview.position.x,5);near(preview.position.z,5);near(preview.position.y,0.5);
   r.placement.rotate();assert.equal(r.placement.get().yaw,90);const id=r.placement.commit();assert.equal(r.world.get(id).body.mode,"static");assert.equal(scene.meshes.length,count+1);
   r.placement.begin({primitive:"box"});preview=r.placement.aim(v(0,1,-3),v(0,-2,-3));assert.equal(preview.valid,false);assert.throws(()=>r.placement.commit());r.placement.cancel();
-  const root=r.world.spawnPrefab("pair",v(8,1,0));r.placement.begin({duplicateId:root});r.placement.aim(v(-5,10,5),v(-5,-2,5));const copy=r.placement.commit();assert.notEqual(root,copy);assert.equal(r.world.children(copy).length,1);assert.notEqual(r.world.children(copy)[0].id,r.world.children(root)[0].id);
+  const root=r.world.spawnPrefab("pair",v(8,1,0));let duplicateIds; r.on("entityDuplicate", (event) => { duplicateIds = event.ids; }); r.placement.begin({duplicateId:root});r.placement.aim(v(-5,10,5),v(-5,-2,5));const copy=r.placement.commit();assert.notEqual(root,copy);assert.equal(duplicateIds[root],copy);assert.equal(Object.keys(duplicateIds).length,2);assert.equal(r.world.children(copy).length,1);assert.notEqual(r.world.children(copy)[0].id,r.world.children(root)[0].id);
   const before=scene.meshes.length;for(let i=0;i<5;i++){r.placement.begin({primitive:"sphere"});r.placement.cancel();}assert.equal(scene.meshes.length,before);
   r.placement.begin({primitive:"box"});r.play();assert.equal(r.placement.get().active,false);assert.throws(()=>r.placement.begin({primitive:"box"}),/editing/);
 });

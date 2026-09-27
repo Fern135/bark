@@ -7,7 +7,7 @@ import { createPlayerController } from "./player-controller.js";
 import type { GamePlayer } from "./player-controller.js";
 import type { WorkerPort } from "./types.js";
 
-export { parseGame, serializeGame, GameFileError } from "./game-file.js";
+export { compileGame, parseGame, serializeGame, GameFileError } from "./game-file.js";
 export type { GameFile, GameFileOptions } from "./game-file.js";
 export type { GamePlayer, PlayerStatus, PlayerSnapshot, PlayerOutput } from "./player-controller.js";
 export interface GamePlayerOptions extends RuntimeOptions {

@@ -1,4 +1,4 @@
-import { Blockly, toolbox } from "@bark/scripting/blocks";
+import { Blockly, toolbox, hasObjectContext } from "@bark/scripting/blocks";
 import type { IconName } from "@/components/ui/icon";
 
 export class BarkFlyout extends Blockly.VerticalFlyout {
@@ -72,6 +72,7 @@ export function showPalette(
   for (const group of groups) {
     if (!("contents" in group) || !group.contents) continue;
     let blocks = group.contents.filter((b) => {
+      if (b.type === "bark_this" && !hasObjectContext()) return false;
       if (!query) return true;
       const block = searchWorkspace!.newBlock(b.type);
       const label = block.toString();
@@ -94,7 +95,7 @@ export function showPalette(
         gap: 10,
       },
       ...blocks.map((block) => ({
-        ...block,
+        ...withEntityDefault(block),
         gap: 10,
         ...(["bark_forward", "bark_turn"].includes(block.type) ? { inputsInline: true } : {}),
       })),
@@ -146,4 +147,16 @@ export function showPalette(
             : "#903AFF",
     );
   }
+}
+
+function withEntityDefault<T extends { type: string; inputs?: Record<string, unknown> }>(definition: T): T {
+  if (!hasObjectContext()) return definition;
+  const workspace = new Blockly.Workspace();
+  try {
+    const block = workspace.newBlock(definition.type);
+    const defaults: Record<string, unknown> = {};
+    if (block.getInput("ENTITY")) defaults.ENTITY = { shadow: { type: "bark_this" } };
+    if (block.getInput("ACTOR")) defaults.ACTOR = { shadow: { type: "bark_entity_id", inputs: { ENTITY: { shadow: { type: "bark_this" } } } } };
+    return Object.keys(defaults).length ? { ...definition, inputs: { ...defaults, ...definition.inputs } } : definition;
+  } finally { workspace.dispose(); }
 }

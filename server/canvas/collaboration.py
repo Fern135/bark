@@ -8,7 +8,7 @@ from authenticator.models import User
 from .access import get_game
 from .models import WorkspaceLock, WorkspaceOperation
 from .document import to_document, save_document, validate_document
-from .collaboration_ops import OpError, apply_ops, conflicts, value_at, digest, canonical
+from .collaboration_ops import is_source, OpError, apply_ops, conflicts, value_at, digest, canonical
 
 LOCK_SECONDS = 30
 
@@ -37,7 +37,7 @@ def snapshot(user, game_id, connection=None):
     document = to_document(game)
     ids = [game.owner_id, *game.members.values_list("user_id", flat=True)]
     members = [{"user": u.user_id, "name": u.username, "role": "owner" if u.user_id == game.owner_id else "editor"} for u in User.objects.filter(user_id__in=ids)]
-    return {"type": "snapshot", "protocol": 2, "doc": str(game.id), "rev": game.revision,
+    return {"type": "snapshot", "protocol": 3, "doc": str(game.id), "rev": game.revision,
             "document": document, "hash": digest(document), "locks": [lock_json(l) for l in live_locks(game)], "members": members}
 
 
@@ -59,6 +59,8 @@ def acquire(user, game_id, connection, resources):
     document = to_document(game)
     locks = live_locks(game)
     for resource in resources:
+        if is_source(resource):
+            raise OpError("INVALID_OP", "Python source is edited concurrently without a lease")
         value_at(document, resource)
         for held in locks:
             if str(held.connection) != connection and conflicts(resource, held.resource, document):
@@ -92,7 +94,7 @@ def commit(user, game_id, connection, commit_id, base, ops):
     locks = live_locks(game)
     for op in ops:
         resource = op.get("resource", "")
-        if not any(str(l.connection) == connection and (l.resource == resource or l.resource == "*") for l in locks):
+        if not is_source(resource) and not any(str(l.connection) == connection and (l.resource == resource or l.resource == "*") for l in locks):
             raise OpError("NOT_LOCKED", "Acquire this item before editing")
         if any(str(l.connection) != connection and conflicts(resource, l.resource, document) for l in locks):
             raise OpError("LOCK_HELD", "Another editor holds this item")

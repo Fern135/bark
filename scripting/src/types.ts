@@ -2,6 +2,7 @@ export type Vec3 = { x: number; y: number; z: number };
 export type JsonValue =
   null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 export type Inspection = {
+  scriptId?: string | null;
   line?: number;
   blockId?: string;
   globals: Record<string, unknown>;
@@ -17,11 +18,13 @@ export type ScriptDocument =
       blocksBackup?: Record<string, unknown>;
     };
 export interface GameDocument<Project = unknown> {
-  version: 1;
+  version: 1 | 2;
   project: Project;
   script: ScriptDocument;
+  objectScripts?: Record<string, ScriptDocument>;
 }
 export interface Diagnostic {
+  scriptId?: string | null;
   message: string;
   line?: number;
   blockId?: string;
@@ -31,6 +34,9 @@ export interface Compilation {
   python: string;
   sourceMap: Record<number, string>;
   diagnostics: Diagnostic[];
+}
+export interface CompiledProgram extends Compilation {
+  scripts: (Compilation & { scriptId: string | null })[];
 }
 export interface ScriptCompiler<Input = ScriptDocument> {
   language: string;
@@ -79,6 +85,7 @@ export type Operation =
   | { op: "spawn"; prefab: string; position: Vec3 };
 export type GameplayEvent =
   | { type: "start" }
+  | { type: "destroy"; entityId: string }
   | {
       type: "input";
       action: string;
@@ -105,7 +112,7 @@ export interface EngineAdapter {
 export type SessionStatus =
   "idle" | "preparing" | "ready" | "running" | "paused" | "error" | "disposed";
 export type HostMessage = { session: number } & (
-  | { type: "prepare"; python: string; runtimeUrl: string; inspect?: boolean }
+  | { type: "prepare"; python: string; scripts?: CompiledProgram["scripts"]; runtimeUrl: string; inspect?: boolean }
   | { type: "inspect"; enabled: boolean }
   | { type: "event"; event: GameplayEvent }
   | { type: "tick"; clock: Clock }
@@ -114,7 +121,7 @@ export type HostMessage = { session: number } & (
 );
 export type WorkerMessage = { session: number } & (
   | { type: "ready" | "tick_ack" | "event_ack" }
-  | { type: "request"; request: number; operation: Operation }
+  | { type: "request"; request: number; operation: Operation; scriptId?: string | null }
   | { type: "output"; text: string; stream: "stdout" | "stderr" }
   | { type: "error"; diagnostic: Diagnostic }
   | { type: "inspection"; snapshot: Inspection }
@@ -127,7 +134,7 @@ export interface WorkerPort {
 }
 export interface ScriptingSession {
   readonly status: SessionStatus;
-  prepare(compilation: Compilation): Promise<void>;
+  prepare(compilation: Compilation | CompiledProgram): Promise<void>;
   play(): void;
   pause(): void;
   resume(): void;

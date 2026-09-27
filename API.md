@@ -332,9 +332,9 @@ Without the cookie, the first message must be `{"type": "auth", "token": "<jwt>"
 5 seconds. A missing, invalid or expired JWT closes the socket with code **1008**. On success the
 server sends `{"type": "ready", "user": "<user_id>"}`.
 
-After that, the socket speaks the collaboration protocol (`join`, `lock`, `unlock`, `commit`,
+After that, the socket speaks the collaboration protocol (`join`, `sync`, `lock`, `unlock`, `commit`,
 `presence`, `heartbeat`). The full message reference is in
-[ws/COLLAB-PROTOCOL.md](ws/COLLAB-PROTOCOL.md).
+[ws/WORKSPACE-PROTOCOL.md](ws/WORKSPACE-PROTOCOL.md).
 
 ---
 
@@ -388,7 +388,7 @@ receive 404; a game UUID is not an invitation.
 | `POST /api/canvas/workspaces/join/` | Signed-in user explicitly redeems `{code}`; repeated joins are idempotent. Limited to 20 attempts/minute/account. |
 | `DELETE /api/canvas/games/<id>/members/<user>/` | Owner removes an editor, or an editor leaves. The owner cannot be removed. |
 
-Shared content is saved through protocol v2 at `/ws/`; old HTTP content writes
+Shared content is saved through protocol v3 at `/ws/`; old HTTP content writes
 return 409 with instructions to reconnect. Rename/delete remain owner-only HTTP
 actions and are reconciled by active rooms. Imported replacements by editors
 retain the workspace name. Real-time acknowledgments use the same Canvas

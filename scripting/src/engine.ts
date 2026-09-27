@@ -178,6 +178,7 @@ export function createEngineAdapter(
         listener({ type, entityId: b, otherId: a });
       };
       const subscriptions = [
+        runtime.on("entity", (e) => { if (e.action === "destroyed") listener({ type: "destroy", entityId: e.entityId }); }, options),
         runtime.onUpdate(() => {
           for (const action of Object.keys(runtime.input.bindings())) {
             const state = runtime.input.action(action),

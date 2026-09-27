@@ -57,14 +57,17 @@ def read_env(path=ENV_FILE):
 
 
 def validate_domain(domain):
-    if re.fullmatch(r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.duckdns\.org', domain):
-        return
     automatic = re.fullmatch(r'bark\.([0-9]{1,3}(?:-[0-9]{1,3}){3})\.sslip\.io', domain)
     if automatic:
         address = ipaddress.IPv4Address(automatic[1].replace('-', '.'))
         if address.is_global:
             return
-    raise ValueError('Use a registered DuckDNS hostname or bark.PUBLIC-IP.sslip.io with dash-separated IPv4')
+    elif not domain.endswith('.sslip.io'):
+        label = r'[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?'
+        if (len(domain) <= 253 and re.fullmatch(rf'(?:{label}\.)+[a-z]{{2,63}}', domain)
+                and domain.rsplit('.', 1)[-1] not in {'localhost', 'local', 'internal', 'test', 'invalid', 'example', 'onion'}):
+            return
+    raise ValueError('Use a public DNS hostname without a scheme, port, path or wildcard')
 
 
 def release_sha(value):

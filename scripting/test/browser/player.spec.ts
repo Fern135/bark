@@ -63,7 +63,7 @@ async def jump(state):
   await expect(page.getByTestId("hud-score")).toHaveText("Score: 0");
   await page.getByLabel("Game viewport").click(); await page.keyboard.press("Space");
   await expect(page.getByTestId("hud-score")).toHaveText("Score: 99");
-  await importFile(page, { ...saved, version: 2 }); await expect(page.getByRole("alert")).toContainText("Unsupported");
+  await importFile(page, { ...saved, version: 99 }); await expect(page.getByRole("alert")).toContainText("Unsupported");
   await expect(page.getByTestId("player-status")).toHaveText("running");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Portable fixtures");
   await page.getByRole("button", { name: "Restart", exact: true }).click();
@@ -129,4 +129,26 @@ test("built player entry point loads its worker and repeated disposal cancels in
   }, JSON.stringify(doc));
   expect(result.abortRejected).toBe(true); expect(result.cancelled).toBe(true);
   expect(result.output.match(/built worker ready/g)).toHaveLength(2); expect(errors).toEqual([]);
+});
+
+
+test("version 2 exports run global and object code together in the player", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("button", { name: "Prepare Python", exact: true })).toBeEnabled();
+  const doc = sampleDocument();
+  doc.version = 2;
+  doc.script = { language: "python", source: "print('GLOBAL PLAYER')\n" };
+  doc.objectScripts = Object.fromEntries(["player", "door"].map((id) => [id, { language: "python", source: "print('OWNER', this.id)\n" }]));
+  await importFile(page, doc);
+  const saved = await exportFile(page);
+  expect(saved.version).toBe(2);
+  expect(Object.keys(saved.objectScripts)).toEqual(["player", "door"]);
+  await page.goto("/player/");
+  await importFile(page, saved);
+  await page.getByRole("button", { name: "Play", exact: true }).click();
+  await expect(page.getByTestId("player-output")).toContainText("GLOBAL PLAYER", { timeout: 45_000 });
+  await expect(page.getByTestId("player-output")).toContainText("OWNER player");
+  await expect(page.getByTestId("player-output")).toContainText("OWNER door");
+  await page.getByRole("button", { name: "Restart", exact: true }).click();
+  await expect(page.getByTestId("player-output")).toContainText("OWNER door", { timeout: 45_000 });
 });
