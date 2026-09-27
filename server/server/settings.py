@@ -23,6 +23,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = Config.SECRET_KEY
+BYTE_HINTS_ENABLED = Config.BYTE_HINTS_ENABLED
+OPENAI_API_KEY = Config.OPENAI_API_KEY
+OPENAI_MODEL = Config.OPENAI_MODEL
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'byte_console': {'class': 'logging.StreamHandler'}},
+    'loggers': {'coach': {'handlers': ['byte_console'], 'level': 'INFO', 'propagate': False}},
+}
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = Config.DEBUG
@@ -54,6 +63,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'authenticator',
     'canvas',
+    'coach',
     'marketplace',
 ]
 

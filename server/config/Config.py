@@ -24,6 +24,10 @@ def _list(name, default=''):
 
 
 class Config:
+    BYTE_HINTS_ENABLED = _bool('BYTE_HINTS_ENABLED', '1')
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+    OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-5.4-mini-2026-03-17')
+
     # ---- Django ----
     SECRET_KEY = _required('DJANGO_SECRET_KEY')
     DEBUG = _bool('DJANGO_DEBUG')

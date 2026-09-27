@@ -10,6 +10,8 @@ import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Collaborators } from "./collaborators";
 import { BlocksEditor, PythonEditor } from "./code-editors";
+import { ByteHint, ByteToggle } from "./byte-hint";
+import { useByteHints } from "./use-byte-hints";
 import { ScenePanel } from "./scene-panel";
 import { Inspector } from "./inspector";
 import { AddObject } from "./add-object";
@@ -78,6 +80,7 @@ export default function Editor({
     return () => window.removeEventListener("keydown", key);
   }, [tab, adding, drawer, editor]);
   const playing = ["running", "paused", "preparing"].includes(editor.status);
+  const byte = useByteHints(editor.game, saveSeed.id, editor.localScriptRevision, tab === "code" && !editor.lock && !adding && !replacing && !languageOpen && !drawer, editor.documentGeneration);
   useEffect(() => {
     let disposed = false;
     renderThumbnails()
@@ -418,6 +421,7 @@ export default function Editor({
         )}
         {tab === "code" && (
           <motion.section className={s.codePanel} aria-label="World code" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2 }}>
+            <ByteToggle enabled={byte.enabled} signedIn={byte.signedIn} toggle={byte.toggle} />
             <div className={s.codeHeading}>
               <div>
                 <h1>
@@ -434,8 +438,8 @@ export default function Editor({
                     initial={editor.game.script.workspace}
                     disabled={editor.lock}
                     diagnostic={editor.diagnostic}
-                    onChange={(workspace, before) =>
-                      editor.script({ language: "blocks", workspace }, before ? { language: "blocks", workspace: before } : undefined)
+                    onChange={(workspace, before, local) =>
+                      editor.script({ language: "blocks", workspace }, before ? { language: "blocks", workspace: before } : undefined, local ?? false)
                     }
                   />
                 ) : (
@@ -450,13 +454,7 @@ export default function Editor({
                   />
                 ))}
             </div>
-            <Image
-              className={s.codeMascot}
-              src="/images/editor/byte-peek.png"
-              alt=""
-              width={128}
-              height={128}
-            />
+            <ByteHint suggestion={byte.suggestion} dismiss={byte.dismiss} />
           </motion.section>
         )}
         <aside className={s.sidebar}>

@@ -77,6 +77,8 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
   }, []);
   const clearHistory = useCallback(() => { history.current = { undo: [], redo: [] }; setHistorySize({ undo: 0, redo: 0 }); }, []);
   const [revision, setRevision] = useState(0);
+  const [localScriptRevision, setLocalScriptRevision] = useState(0);
+  const [documentGeneration, setDocumentGeneration] = useState(0);
   const cancelled = useRef<AbortController | null>(null);
   const alive = useRef(false);
   const lock =
@@ -286,7 +288,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       commit(snapshot()); setDiagnostic(undefined);
     } catch (error) { report(error); }
   }
-  function script(next: ScriptDocument, before?: ScriptDocument) {
+  function script(next: ScriptDocument, before?: ScriptDocument, local = true) {
     if (
       lock ||
       operation.current ||
@@ -294,6 +296,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     )
       return;
     commit({ ...current.current, script: next }, true, false, before ? { ...current.current, script: before } : undefined);
+    if (local) setLocalScriptRevision((value) => value + 1);
     setDiagnostic(undefined);
   }
   async function rename(name: string) {
@@ -329,6 +332,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       );
       setRevision((n) => n + 1);
       setOutput([]);
+      setDocumentGeneration((n) => n + 1);
       return true;
     } catch (error) {
       if (!abort.signal.aborted) {
@@ -490,6 +494,8 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     selected,
     setSelected,
     revision,
+    localScriptRevision,
+    documentGeneration,
     lock,
     report,
     edit,

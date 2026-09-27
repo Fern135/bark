@@ -32,10 +32,14 @@ class ComposeTests(unittest.TestCase):
             else:
                 self.assertEqual(ports, [], name)
 
-    def test_application_and_data_services_have_no_external_network(self):
+    def test_only_django_has_coach_egress(self):
         self.assertTrue(self.model['networks']['internal']['internal'])
-        for name in ('web', 'server', 'ws', 'db', 'redis'):
+        for name in ('web', 'ws', 'db', 'redis'):
             self.assertEqual(set(self.services[name]['networks']), {'internal'})
+        self.assertEqual(set(self.services['server']['networks']), {'internal', 'coach_egress'})
+        self.assertFalse(self.model['networks']['coach_egress'].get('internal', False))
+        self.assertIn('OPENAI_API_KEY', self.services['server']['environment'])
+        self.assertNotIn('OPENAI_API_KEY', self.services['web']['environment'])
 
     def test_recovery_migrations_tests_and_secure_cookies_are_explicit(self):
         for name in ('server', 'ws'):
