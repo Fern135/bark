@@ -334,7 +334,7 @@ const byteTips = aiTip && !(aiTip.kind === "idea" && byteReview.tips.some((tip) 
                     onClick={() => {
                       editor.convert();
                       setLanguageOpen(false);
-                    }}
+                    }
                   >
                     {editor.activeScript.language === "blocks"
                       ? "Convert to Python"
