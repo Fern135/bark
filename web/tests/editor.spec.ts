@@ -22,6 +22,7 @@ async function importGame(page: Page, game: unknown) {
     mimeType: "application/json",
     buffer: Buffer.from(JSON.stringify(game)),
   });
+  await expect(page.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
 }
 
 test("edit, gallery, GLB upload, export/import and invalid import preserve authored content", async ({
@@ -139,6 +140,7 @@ test("real Blockly and Python playback, conversion, pause/resume, Stop and error
   page.on("pageerror", (error) => errors.push(error.message));
   await open(page);
   await page.getByRole("button", { name: "Code", exact: true }).click();
+  await page.getByLabel("Code browser").selectOption("");
   await expect(
     page.locator(".block-editor > .injectionDiv > .blocklySvg"),
   ).toBeVisible();
@@ -150,6 +152,7 @@ test("real Blockly and Python playback, conversion, pause/resume, Stop and error
   await page.getByRole("button", { name: "Resume" }).click();
   await page.getByRole("button", { name: "Stop", exact: true }).click();
   await page.getByRole("button", { name: "Code", exact: true }).click();
+  await page.getByLabel("Code browser").selectOption("");
   await page.getByRole("button", { name: /Language: Blocks/ }).click();
   await page.getByRole("button", { name: "Convert to Python" }).click();
   await expect(page.locator(".cm-editor")).toBeVisible();
@@ -170,6 +173,7 @@ test("real Blockly and Python playback, conversion, pause/resume, Stop and error
       'from bark import game\n@game.on_start\nasync def start():\n    await game.properties.set("runtime_only", True)\n    await game.entity("player").teleport(4, 2, 0)\n    await game.set_hud("status", "Status", "PLAY_OK")\n    print("PLAY_OK")\n',
   };
   await importGame(page, game);
+  await page.getByLabel("Code browser").selectOption("");
   await expect(page.locator(".cm-content")).toContainText("runtime_only");
   for (let i = 0; i < 2; i++) {
     await page.getByRole("button", { name: "Play", exact: true }).click();
@@ -352,6 +356,7 @@ test("model studio stays out of saves; searchable palette supports drag, undo an
   await page.getByRole("button", { name: "Reset preview camera" }).click();
   expect((await exportGame(page)).project).toEqual(before.project);
   await page.getByRole("button", { name: "Code", exact: true }).click();
+  await page.getByLabel("Code browser").selectOption("");
   // A hat still owns a real statement connection even without a visible C frame.
   const starterStacks = page.locator("svg.blocklySvg .blocklyBlockCanvas > .blocklyDraggable");
   const firstAction = starterStacks.first().locator(":scope > .blocklyDraggable").first();

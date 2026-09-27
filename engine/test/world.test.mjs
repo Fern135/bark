@@ -517,7 +517,7 @@ test("placement snaps, rejects penetration, duplicates with fresh IDs and cleans
   let preview=r.placement.aim(v(5.2,10,5.3),v(5.2,-2,5.3));assert.equal(preview.valid,true);near(preview.position.x,5);near(preview.position.z,5);near(preview.position.y,0.5);
   r.placement.rotate();assert.equal(r.placement.get().yaw,90);const id=r.placement.commit();assert.equal(r.world.get(id).body.mode,"static");assert.equal(scene.meshes.length,count+1);
   r.placement.begin({primitive:"box"});preview=r.placement.aim(v(0,1,-3),v(0,-2,-3));assert.equal(preview.valid,false);assert.throws(()=>r.placement.commit());r.placement.cancel();
-  const root=r.world.spawnPrefab("pair",v(8,1,0));r.placement.begin({duplicateId:root});r.placement.aim(v(-5,10,5),v(-5,-2,5));const copy=r.placement.commit();assert.notEqual(root,copy);assert.equal(r.world.children(copy).length,1);assert.notEqual(r.world.children(copy)[0].id,r.world.children(root)[0].id);
+  const root=r.world.spawnPrefab("pair",v(8,1,0));let duplicateIds; r.on("entityDuplicate", (event) => { duplicateIds = event.ids; }); r.placement.begin({duplicateId:root});r.placement.aim(v(-5,10,5),v(-5,-2,5));const copy=r.placement.commit();assert.notEqual(root,copy);assert.equal(duplicateIds[root],copy);assert.equal(Object.keys(duplicateIds).length,2);assert.equal(r.world.children(copy).length,1);assert.notEqual(r.world.children(copy)[0].id,r.world.children(root)[0].id);
   const before=scene.meshes.length;for(let i=0;i<5;i++){r.placement.begin({primitive:"sphere"});r.placement.cancel();}assert.equal(scene.meshes.length,before);
   r.placement.begin({primitive:"box"});r.play();assert.equal(r.placement.get().active,false);assert.throws(()=>r.placement.begin({primitive:"box"}),/editing/);
 });

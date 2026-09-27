@@ -214,7 +214,7 @@ class ValidationTests(CanvasTestCase):
 
     def test_document_shape(self):
         self.assertInvalid(None, "document must be an object")
-        self.assertInvalid({**sample(), "version": 2}, "document version must be 1")
+        self.assertInvalid({**sample(), "version": 99}, "document version must be 2")
         self.assertInvalid({**sample(), "project": []}, "project must be an object")
         self.assertInvalid(sample(version=3), "project.version must be 1")
 

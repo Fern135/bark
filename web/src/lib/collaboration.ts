@@ -3,20 +3,17 @@ import { drafts } from "./drafts";
 import { gamesApi, type Game } from "./games";
 import type { SaveSeed, SaveState } from "./autosave";
 import { serializeGame } from "@bark/scripting/player";
-import { mergeText } from "./shared-text";
 import type { CameraPose, Transform } from "@bark/engine";
 
 export type Member = { user: string; name: string; role: "owner" | "editor" };
 export type Presence = { camera?: CameraPose; selected?: string | null; view?: string; preview?: { id: string; transform: Transform } | null };
 export type Peer = Presence & { user: string; conn: string; resource: string | null };
 export type ResourceLock = { resource: string; user: string; conn: string };
-export type Edit = { op: "set"; resource: string; before: unknown; value: unknown };
+export type { Edit } from "./workspace-document";
+import { canonical, applyEdits, edits, valueAt, scriptResource, splitScriptResource, type Edit } from "./workspace-document";
+export { canonical, applyEdits, edits, valueAt, assignBlockIds, scriptResource, splitScriptResource } from "./workspace-document";
+const isSource = (resource: string) => splitScriptResource(resource)[1] === "source";
 export type CollaborationState = SaveState & { connected: boolean; members: Member[]; peers: Peer[]; locks: ResourceLock[]; conn: string };
-export function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
-  if (value && typeof value === "object") return `{${Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`).join(",")}}`;
-  return JSON.stringify(value ?? null);
-}
 async function digest(value: unknown): Promise<string> {
   const normalize = (v: unknown): unknown => {
     if (typeof v === "number") { const buffer = new ArrayBuffer(8); new DataView(buffer).setFloat64(0, v || 0); return ["#number", Array.from(new Uint8Array(buffer), (b) => b.toString(16).padStart(2, "0")).join("")]; }
@@ -27,73 +24,6 @@ async function digest(value: unknown): Promise<string> {
   return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical(normalize(value))))), (b) => b.toString(16).padStart(2, "0")).join("");
 }
 const equal = (a: unknown, b: unknown) => canonical(a) === canonical(b);
-type Root = { id: string; [key: string]: unknown };
-function roots(game: Game): Root[] {
-  return game.script.language === "blocks" ? ((game.script.workspace.blocks as { blocks?: Root[] })?.blocks ?? []) : [];
-}
-export function valueAt(game: Game, resource: string): unknown {
-  if (resource === "*") return game;
-  if (resource === "script") return game.script;
-  if (resource === "source") return game.script.language === "python" ? game.script.source : null;
-  if (resource === "variables") return game.script.language === "blocks" ? game.script.workspace.variables ?? [] : [];
-  const [kind, ...parts] = resource.split(":"); const key = parts.join(":");
-  if (kind === "entity") return game.project.entities.find((e) => e.id === key) ?? null;
-  if (kind === "block") return roots(game).find((e) => e.id === key) ?? null;
-  return (game.project as unknown as Record<string, unknown>)[key] ?? null;
-}
-export function edits(before: Game, after: Game): Edit[] {
-  const result: Edit[] = [];
-  const add = (resource: string) => { const a = valueAt(before, resource), b = valueAt(after, resource); if (!equal(a, b)) result.push({ op: "set", resource, before: a, value: b }); };
-  for (const id of new Set([...before.project.entities, ...after.project.entities].map((e) => e.id))) add(`entity:${id}`);
-  for (const key of ["name", "settings", "cameras", "input", "properties", "assets", "materials", "prefabs"]) add(`section:${key}`);
-  if (before.script.language === "python" && after.script.language === "python" && equal(before.script.blocksBackup, after.script.blocksBackup)) add("source");
-  else if (before.script.language !== "blocks" || after.script.language !== "blocks") add("script");
-  else {
-    for (const id of new Set([...roots(before), ...roots(after)].map((b) => b.id))) add(`block:${id}`);
-    add("variables");
-  }
-  return result;
-}
-export function applyEdits(document: Game, ops: Edit[], check = true, merge = false): Game {
-  let game = structuredClone(document);
-  for (const op of ops) {
-    if (merge && op.resource === "source" && game.script.language === "python" && typeof op.before === "string" && typeof op.value === "string") {
-      game.script.source = mergeText(op.before, op.value, game.script.source);
-      continue;
-    }
-    if (check && !equal(valueAt(game, op.resource), op.before)) throw new Error("This item changed while you were editing. Reload or save your work as a copy.");
-    const value = structuredClone(op.value);
-    if (op.resource === "*") game = value as Game;
-    else if (op.resource === "script") game.script = value as Game["script"];
-    else if (op.resource === "source" && game.script.language === "python") game.script.source = value as string;
-    else if (op.resource === "variables" && game.script.language === "blocks") game.script.workspace.variables = value;
-    else if (op.resource.startsWith("section:")) (game.project as unknown as Record<string, unknown>)[op.resource.slice(8)] = value;
-    else {
-      const items = op.resource.startsWith("entity:") ? game.project.entities : roots(game);
-      const key = op.resource.slice(op.resource.indexOf(":") + 1);
-      const index = items.findIndex((i) => i.id === key);
-      if (index >= 0) { if (value === null) items.splice(index, 1); else items.splice(index, 1, value as never); }
-      else if (value !== null) items.push(value as never);
-    }
-  }
-  return game;
-}
-
-export function assignBlockIds(game: Game): Game {
-  for (const workspace of [game.script.language === "blocks" ? game.script.workspace : undefined, game.script.language === "python" ? game.script.blocksBackup : undefined]) {
-    if (!workspace) continue;
-    const seen = new Set<string>();
-    const block = (node: Record<string, unknown>) => {
-      if (typeof node.id !== "string" || !node.id || seen.has(node.id)) node.id = crypto.randomUUID();
-      seen.add(node.id as string);
-      const connections = [...Object.values((node.inputs ?? {}) as Record<string, Record<string, unknown>>), (node.next ?? {}) as Record<string, unknown>];
-      for (const connection of connections) for (const key of ["block", "shadow"]) if (connection[key]) block(connection[key] as Record<string, unknown>);
-    };
-    for (const root of ((workspace.blocks as { blocks?: Record<string, unknown>[] })?.blocks ?? [])) block(root);
-  }
-  return game;
-}
-
 export class Collaboration {
   state: CollaborationState = { status: "pending", message: "Connecting to workspace…", localError: "", dirty: false, connected: false, members: [], peers: [], locks: [], conn: "" };
   private socket?: WebSocket;
@@ -221,11 +151,17 @@ export class Collaboration {
     if (equal(this.base, this.local)) { this.emit({ status: "saved", message: "Live · Saved" }); return; }
     this.timer = setTimeout(() => { this.timer = undefined; void this.flush(); }, 60);
   }
-  owns(resource: string) { return resource === "source" ? this.state.connected && !this.state.locks.some((l) => l.conn !== this.state.conn && ["*", "script"].includes(l.resource)) : this.state.locks.some((l) => l.conn === this.state.conn && (l.resource === resource || l.resource === "*")); }
+  owns(resource: string) {
+    const [owner] = splitScriptResource(resource);
+    const parent = scriptResource(owner, "script");
+    return isSource(resource)
+      ? this.state.connected && !this.state.locks.some((l) => l.conn !== this.state.conn && ["*", parent].includes(l.resource))
+      : this.state.locks.some((l) => l.conn === this.state.conn && (l.resource === resource || l.resource === "*"));
+  }
   async acquire(resources: string[]): Promise<boolean> {
     if (!this.state.connected || ["conflict", "session", "error"].includes(this.state.status)) return false;
-    if (resources.includes("source") && !this.owns("source")) return false;
-    resources = resources.filter((r) => r !== "source");
+    if (resources.some((r) => isSource(r) && !this.owns(r))) return false;
+    resources = resources.filter((r) => !isSource(r));
     if (!resources.length) return true;
     clearTimeout(this.releaseTimer);
     if (resources.every((r) => this.owns(r))) { this.releaseSoon(); return true; }

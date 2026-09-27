@@ -1,6 +1,6 @@
 # Bark Script Lab
 
-One game, one script, two authoring modes: Blockly blocks or Python. Blocks compile to readable Python; both execute in a local Pyodide Web Worker. The engine owns rendering, physics, input, and world restoration. No Python server is involved.
+One global script and one script per object, each authored with Blockly blocks or Python. Blocks compile to readable Python; both execute in a local Pyodide Web Worker. The engine owns rendering, physics, input, and world restoration. No Python server is involved.
 
 ## Run
 
@@ -99,7 +99,7 @@ Interaction events are supplied by the host engine. Binding a key to an action d
 
 ## Authoring and persistence
 
-The outer document is `{ version: 1, project, script }`. `project` is an unchanged engine `ProjectDocument`. `script` is either `{ language: "blocks", workspace }` or `{ language: "python", source, blocksBackup? }`.
+The outer document is `{ version: 2, project, script, objectScripts }`. Version 1 documents remain readable with their original global script; exports use version 2. `objectScripts` maps existing entity IDs to scripts. `project` is an unchanged engine `ProjectDocument`. `script` is either `{ language: "blocks", workspace }` or `{ language: "python", source, blocksBackup? }`.
 
 Export saves authored state, not runtime changes. Import validates both documents before loading. Blockly workspace JSON preserves block IDs, variable IDs, and layout. Converting to Python stores a detached block backup. **Restore saved blocks** replaces the current Python script with that backup; Python edits are never translated back into blocks.
 
@@ -119,7 +119,7 @@ The renderer, Blockly, and Python runtime make the playground a large bundle; th
 
 The **Coin gate** sample uses a dynamic capsule character, gems worth 1/2/3 points, an interactable kinematic gate, a checkpoint, and a goal. Collect all six points, face the gate, and press **E**. The visible `try_open(cost)` function checks the score, glides the gate aside, and returns a boolean. A broadcast announces success. The blue checkpoint changes your spawn; walking off the meadow demonstrates respawning. The goal spawns a reward crate and cancels the countdown. Reaching zero on the countdown displays a message but permits continued exploration.
 
-Both examples contain this gameplay in their single script. Stop restores all authored entities and properties, resets the checkpoint, clears HUD/notifications, and discards timers and Python variables.
+Both examples keep this gameplay in their global script. Stop restores all authored entities and properties, resets the checkpoint, clears HUD/notifications, and discards timers and Python variables.
 
 All operations below are awaited; event decorators and property/ID handles are local:
 
@@ -180,3 +180,26 @@ Broadcasts enqueue a JSON snapshot independently for each receiver and do not wa
 Expand **Live inspection** and enable it before or during execution. The panel shows global variables, current locals, source line/block, and the latest 200 handler start/completion events. Execution highlights are separate from errors and do not move the editor viewport. Inspection is opt-in, sampled at most 10 times per second, and intentionally shows bounded previews: 100 scope entries, 20 collection items, three nesting levels, and 200 characters per string. Unsupported objects appear as placeholders; watches do not evaluate expressions or invoke user representations.
 
 Generated statements include lightweight markers; handwritten Python is traced only while inspection is enabled. Inspection is best effort during CPU-heavy code. It adds overhead and is not a breakpoint/step debugger. Stop still terminates the worker immediately.
+
+## Object code
+
+Selecting an object in the editor opens its code; choosing World or clearing selection opens global code. The Code browser includes child objects. Opening an unedited object presents an empty Blocks workspace without saving anything. Empty scripts are valid no-ops.
+
+Object code has a Python `this` entity handle and a **this object** block. New object selectors default to the owner; explicit entity references remain explicit. Conversion and saved block backups belong to each individual script.
+
+`compileGame(document)` produces a `CompiledProgram` with independently mapped compilations, ordered global first and then by project entity order. `session.prepare` accepts this program or a legacy single `Compilation`. One worker registers every script before Start. Each script has its own Python namespace and named timers. World properties and messages are shared. Do not use bare Python globals to share state across scripts.
+
+```python
+from bark import game
+
+@game.on_start
+async def start():
+    await this.properties.set("health", 100)
+    await game.broadcast("ready", this.id)
+```
+
+Diagnostics and inspection snapshots carry `scriptId` (`null` for global code), preserving original lines and block IDs. Stop discards every script together. Destroying an owner cancels its callbacks, waits, and queued commands. Runtime changes remain temporary.
+
+Authored duplication emits the engine's `entityDuplicate` event containing the source-to-copy ID map. Hosts use `copyObjectScripts(document, ids)` with the updated project; the editor and playground do this automatically. Owner-relative references follow the copy; explicit references keep their original targets.
+
+The block audit covers all 98 exposed block types, their dropdown modes, and missing required inputs. Browser fixtures execute generated Python against the engine, including cooperative loops and Stop. Run `npm test` and `npm run test:browser` from this package.

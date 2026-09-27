@@ -13,6 +13,7 @@ async function open(page: Page) {
   await page.goto("/editor");
   await expect(page.getByRole("button", { name: "Play", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Code", exact: true }).click();
+  await page.getByLabel("Code browser").selectOption("");
   await expect(page.getByRole("checkbox", { name: "Byte hints" })).toBeChecked();
 }
 
@@ -48,6 +49,7 @@ test("Python hints debounce, preserve focus, dismiss, fit mobile and remember th
   await page.getByRole("checkbox", { name: "Byte hints" }).uncheck();
   await page.goto("/editor");
   await page.getByRole("button", { name: "Code", exact: true }).click();
+  await page.getByLabel("Code browser").selectOption("");
   await expect(page.getByRole("checkbox", { name: "Byte hints" })).not.toBeChecked();
 });
 

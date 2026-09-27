@@ -78,6 +78,7 @@ test("simultaneous Python writers converge, retain local undo and share moving c
   await peer.screenshot({ path: ".cache/realtime-cameras.png" });
   for (const p of [page, peer]) {
     await p.getByRole("button", { name: "Code", exact: true }).click();
+    await p.getByLabel("Code browser").selectOption("");
     await expect(p.locator(".cm-content")).toHaveAttribute("contenteditable", "true");
     await p.locator(".cm-content").click();
     await p.keyboard.press("Control+End");
@@ -111,6 +112,7 @@ test("simultaneous Python writers converge, retain local undo and share moving c
   }
   await peer.reload();
   await peer.getByRole("button", { name: "Code", exact: true }).click();
+  await peer.getByLabel("Code browser").selectOption("");
   await expect(peer.locator(".cm-content")).toContainText("KEEP_PEER");
   await other.close();
   await page.getByRole("button", { name: "Viewport", exact: true }).click();
@@ -161,7 +163,10 @@ test("invite-only workspace, live edits, ownership, presence and persistent shar
   await Promise.all([page.getByLabel("Name", { exact: true }).fill("Team crate"), peer.getByLabel("Name", { exact: true }).fill("Team rock")]);
   await expect(peer.getByRole("button", { name: "Team crate", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Team rock", exact: true })).toBeVisible();
-  for (const p of [page, peer]) await p.getByRole("button", { name: "Code", exact: true }).click();
+  for (const p of [page, peer]) {
+    await p.getByRole("button", { name: "Code", exact: true }).click();
+    await p.getByLabel("Code browser").selectOption("");
+  }
   const rootSelector = "svg.blocklySvg .blocklyBlockCanvas > .blocklyDraggable";
   const originalRoots = (await (await context.request.get(`/api/canvas/games/${game.id}/`)).json()).document.script.workspace.blocks.blocks;
   const moveRoot = async (p: typeof page, index: number) => {
@@ -286,11 +291,13 @@ test("shared imports preserve Python, blocks and assets; offline editing pauses 
   await page.getByLabel("Import game JSON").setInputFiles({ name: "shared.bark.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(document)) });
   await expect(page.getByRole("status", { includeHidden: true }).filter({ hasText: "Live · Saved" })).toBeVisible();
   await peer.getByRole("button", { name: "Code", exact: true }).click();
+  await peer.getByLabel("Code browser").selectOption("");
   await expect(peer.locator(".cm-content")).toContainText("shared import");
   const saved = (await (await context.request.get(`/api/canvas/games/${game.id}/`)).json()).document;
   expect(saved.script.blocksBackup).toEqual(backup);
   expect(saved.project.assets.every((a: { url: string }) => a.url.startsWith("data:"))).toBe(true);
   await page.getByRole("button", { name: "Code", exact: true }).click();
+  await page.getByLabel("Code browser").selectOption("");
   await page.locator(".python-editor").hover();
   await expect(page.locator(".cm-content")).toHaveAttribute("contenteditable", "true");
   await page.locator(".cm-content").click();

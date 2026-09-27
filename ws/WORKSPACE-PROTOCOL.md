@@ -94,3 +94,11 @@ migrations and remove only their own users/games. Browser integration uses real
 cookies through the gateway: `npm --prefix web run test:integration -- collaboration.spec.ts`.
 Run with multiple websocket workers to validate cross-worker Redis delivery.
 SQLite/LocalBus development checks do not establish PostgreSQL concurrency.
+
+### Object scripts (document version 2)
+
+`objectScripts` is a map from existing entity ID to a Blocks/Python script. The existing `script`, `source`, `variables`, and `block:<root-id>` resources still refer to global code. Object resources are `object:<encodeURIComponent(entity-id)>:script`, `:source`, `:variables`, and `:block:<root-id>`. IDs are encoded so colons and Unicode cannot split resource boundaries.
+
+Python source edits remain concurrent without leases. Script conversion locks conflict with resources in that script only; identical block IDs in different scripts do not conflict. A whole-document `*` lock covers all scripts. First edits create an entire object script. Delete the object and its script in the same commit. Upgrading a legacy document uses a `version` resource edit from 1 to 2, creating the empty object-script map before other changes.
+
+Deploy the Canvas object-script migration with the matching editor, websocket service and player. Legacy files remain importable; older readers reject exported version 2 files instead of silently ignoring object behavior.

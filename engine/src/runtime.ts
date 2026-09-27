@@ -81,7 +81,7 @@ export class Runtime implements GameRuntime {
     this.input = new Input(canvas, this.events);
     this.gameplay = new Gameplay(() => this.world, this.events, () => this.status, this.writable,
       () => { this.bundle(); return this.propertyValues; }, (values) => { this.propertyValues = values; if (this.status === "editing") this.authored!.properties = structuredClone(values); }, this.limits);
-    this.placement = new Placement(() => this.world, () => this.bundle().scene, () => this.exportProject(), () => { this.alive(); if (this.status !== "editing") throw new EngineError("INVALID_STATE", "Placement requires editing mode."); });
+    this.placement = new Placement(() => this.world, () => this.bundle().scene, () => this.exportProject(), () => { this.alive(); if (this.status !== "editing") throw new EngineError("INVALID_STATE", "Placement requires editing mode."); }, (ids) => this.events.emit("entityDuplicate", { ids }));
     if (canvas) { canvas.tabIndex = 0; engine.runRenderLoop(this.render); }
   }
   get state(): RuntimeState { return this.status; }

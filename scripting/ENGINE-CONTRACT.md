@@ -57,7 +57,7 @@ Input is sampled during the adapter's fixed update. It synthesizes a release whe
 ## Lifecycle ordering
 
 1. Load and validate the authored engine project.
-2. Compile the single script. `prepare` creates a worker, loads local Pyodide, executes module setup, and registers handlers. The promise resolves in `ready`; it can be cancelled by Stop.
+2. Compile the global script and object scripts using `compileGame`. Each compilation retains its owner and source map. `prepare` creates a worker, loads local Pyodide, executes module setup, and registers handlers. The promise resolves in `ready`; it can be cancelled by Stop.
 3. `play` calls engine Play, then registers session events and updates, then dispatches the script's start event. This ordering is required because engine Play clears session callbacks.
 4. Worker operations queue until the next engine update. Apply a snapshot of that queue before physics, replying only after each operation executes. An awaited result may take more than one rendered frame; rendering and physics never wait on Python.
 5. Pause holds requests and timers. Resume continues them with preserved interpreter state. Arbitrary Python calculations are not forcibly suspended.

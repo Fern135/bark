@@ -39,6 +39,7 @@ export interface ActionState { pressed: boolean; held: boolean; released: boolea
 export interface QueryOptions { excludeId?: EntityId; includeTriggers?: boolean; mask?: number; membership?: number }
 export interface SpatialHit { entityId: EntityId; point: Vec3; normal: Vec3; distance: number }
 export interface EngineEvents {
+  entityDuplicate: { ids: Record<EntityId, EntityId> };
   editorSelection: { entityId: EntityId | null };
   editorTransform: { phase: "preview" | "commit" | "cancel"; entityId: EntityId; before: Transform; transform: Transform; label: string };
   state: { previous: RuntimeState; state: RuntimeState };

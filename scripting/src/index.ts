@@ -1,6 +1,9 @@
 export { createScriptingSession } from "./session.js";
 export {
   validateDocument,
+  scriptFor,
+  copyObjectScripts,
+  withScript,
   compilePython,
   pythonCompiler,
   convertToPython,
