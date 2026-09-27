@@ -36,10 +36,7 @@ private controlState = "";
     if (state === this.controlState) return;
     this.controlState = state;
     this.toolsEnabled = enabled;
-    const mode = `${enabled}:${dragging}:${this.value.active}`;
     // Reattaching during pointerdown cancels Babylon's active mouse gesture.
-    if (mode === this.controlMode) return;
-    this.controlMode = mode;
     const pointers = this.editor.inputs.attached.pointers as import("@babylonjs/core/Cameras/Inputs/arcRotateCameraPointersInput.js").ArcRotateCameraPointersInput;
     pointers.buttons = enabled ? [1, 2] : [0, 1, 2];
     const rotate = this.editor.movement.input.getEntry("pointer", "rotate", { modifiers: {} });
