@@ -51,5 +51,6 @@ ufw allow from "$admin_cidr" to any port 22 proto tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
 ufw --force enable
+python3 "$(dirname "$0")/oracle_firewall.py"
 systemctl enable --now docker
 echo 'Host dependencies installed. Follow deploy/README.md for backups, DNS and initialization.'
