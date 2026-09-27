@@ -12,6 +12,7 @@ import { BarkRenderer } from "./block-renderer";
 import { CategoryIcon } from "./category-icon";
 import type { Diagnostic } from "@bark/scripting";
 import { canonical, type Collaboration } from "@/lib/collaboration";
+import { textChanges } from "@/lib/shared-text";
 
 export function BlocksEditor({
   collaboration,
@@ -347,9 +348,9 @@ export function PythonEditor({
   readOnly: boolean;
   diagnostic?: Diagnostic;
   executingLine?: number;
-  onChange?(value: string): void;
+  onChange?(value: string, before: string): void;
 }) {
-  const readOnly = requestedReadOnly || (!!collaboration && !collaboration.owns("script"));
+  const readOnly = requestedReadOnly || (!!collaboration && !collaboration.owns("source"));
   const remoteChange = useRef(false);
   const [editable] = useState(() => new Compartment());
   const container = useRef<HTMLDivElement>(null),
@@ -379,7 +380,7 @@ export function PythonEditor({
           }),
           EditorView.updateListener.of((update) => {
             if (update.docChanged && !remoteChange.current)
-              change.current?.(update.state.doc.toString());
+              change.current?.(update.state.doc.toString(), update.startState.doc.toString());
           }),
         ],
       }),
@@ -400,7 +401,7 @@ export function PythonEditor({
     if (view && view.state.doc.toString() !== source) {
       remoteChange.current = true;
       view.dispatch({
-        changes: { from: 0, to: view.state.doc.length, insert: source },
+        changes: textChanges(view.state.doc.toString(), source),
         annotations: Transaction.addToHistory.of(false),
       });
       remoteChange.current = false;
@@ -438,10 +439,6 @@ export function PythonEditor({
     <div
       className="python-editor"
       tabIndex={0}
-      onFocus={() => { if (!requestedReadOnly) { collaboration?.beginInteraction(); void collaboration?.acquire(["script"]); } }}
-      onPointerEnter={() => { if (!requestedReadOnly) void collaboration?.acquire(["script"]); }}
-      onPointerDown={() => { if (!requestedReadOnly) void collaboration?.acquire(["script"]); }}
-      onBlur={() => collaboration?.endInteraction()}
       ref={container}
       aria-label={readOnly ? "Python preview" : "Python editor"}
     />

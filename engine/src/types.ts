@@ -23,6 +23,8 @@ export interface MaterialDefinition { id: string; color: string; textureId?: str
 export interface PrefabDefinition { id: string; entities: EntityDefinition[] }
 export interface SceneSettings { background: string; ambientIntensity: number; sunIntensity: number; shadows: boolean; resolutionScale: number; maxDevicePixelRatio: number; gravity: Vec3 }
 export interface CameraSettings { active: "editor" | "follow"; targetId: EntityId | null; target: Vec3; offset: Vec3; fieldOfView: number }
+export interface CameraPose { position: Vec3; target: Vec3 }
+export interface EditorPeer { id: string; color: string; camera?: CameraPose; selected?: string | null; preview?: { id: string; transform: Transform } | null }
 /** Bindings use KeyboardEvent.code or Mouse0/Mouse1/Mouse2. */
 export type InputBindings = Record<string, string[]>;
 export interface ProjectDocument {
@@ -91,7 +93,7 @@ export interface GameRuntime {
   readonly clock: ClockSnapshot;
   readonly settings: SceneSettings;
   readonly input: { action(name: string): ActionState; pointer(): { x: number; y: number }; bindings(): InputBindings };
-  readonly cameras: { get(): CameraSettings; set(settings: Partial<CameraSettings>): void; frame(id?: EntityId, padding?: number): void; forward(): Vec3; ray(x: number, y: number): { from: Vec3; to: Vec3 } };
+  readonly cameras: { get(): CameraSettings; pose(): CameraPose; project(point: Vec3): { x: number; y: number; visible: boolean }; set(settings: Partial<CameraSettings>): void; frame(id?: EntityId, padding?: number): void; forward(): Vec3; ray(x: number, y: number): { from: Vec3; to: Vec3 } };
   readonly assets: { list(): AssetDefinition[] };
   readonly characters: CharacterAPI; readonly interactions: InteractionAPI; readonly properties: PropertiesAPI;
   readonly motion: MotionAPI; readonly feedback: FeedbackAPI; readonly placement: PlacementAPI;
@@ -110,6 +112,7 @@ export interface EditorToolOptions {
   snapping: boolean; moveSnap: number; resizeSnap: number; rotateSnap: number;
 }
 export interface EditorToolsAPI {
+  presence(peers: EditorPeer[]): void;
   configure(options: Partial<EditorToolOptions>): void;
   get(): EditorToolOptions;
   cancel(): void;

@@ -41,6 +41,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
   const importedAtStart = useRef(!frameStarter);
   const canvas = useRef<HTMLCanvasElement>(null);
   const runtime = useRef<GameRuntime | null>(null);
+  const [visibleRuntime, setVisibleRuntime] = useState<GameRuntime | null>(null);
   const session = useRef<ScriptingSession | null>(null);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -122,6 +123,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       await engine.load(current.current.project, { signal: abort.signal });
       if (abort.signal.aborted) return;
       runtime.current = engine;
+      setVisibleRuntime(engine);
       // Start the sample at character height; imported games keep an overview.
       engine.cameras.frame(importedAtStart.current ? undefined : "player", importedAtStart.current ? 1.05 : 5.5);
       setBlockChoices(choicesFor(current.current.project));
@@ -140,6 +142,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       off.push(
         engine.on("editorSelection", ({ entityId }) => setSelected(entityId)),
         engine.on("editorTransform", (event) => {
+          liveClient?.publishPresence({ preview: event.phase !== "cancel" ? { id: event.entityId, transform: event.transform } : null }, event.phase !== "preview");
           if (event.phase === "preview") setTransformPreview({ id: event.entityId, transform: event.transform, label: event.label });
           else {
             setTransformPreview(null);
@@ -478,6 +481,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     setSelected(null);
   }
   return {
+    runtime: visibleRuntime,
     cloud, live, shared: !!saveSeed.collaboration, role: saveSeed.role ?? "owner", acquire,
     tools, setTools, setViewportActive, transformPreview, historySize, undoTransform,
     cancelTransform: () => runtime.current?.editorTools.cancel(),

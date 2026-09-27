@@ -9,6 +9,7 @@ import { motion, MotionConfig } from "motion/react";
 import { Button, IconButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Collaborators } from "./collaborators";
+import { WorkspacePresence } from "./workspace-presence";
 import { BlocksEditor, PythonEditor } from "./code-editors";
 import { ByteHint, ByteToggle } from "./byte-hint";
 import { useByteHints } from "./use-byte-hints";
@@ -351,6 +352,7 @@ export default function Editor({
             tabIndex={tab === "viewport" ? 0 : -1}
             aria-label="Interactive 3D world"
           />
+          {editor.shared && <WorkspacePresence runtime={editor.runtime} client={editor.live.client} selected={editor.selected} view={tab} />}
           {!editor.ready && (
             <div className={s.loading} role="status">
               {editor.diagnostic
@@ -447,9 +449,9 @@ export default function Editor({
                     source={editor.game.script.source}
                     readOnly={editor.lock}
                     diagnostic={editor.diagnostic}
-                    onChange={(source) => {
+                    onChange={(source, before) => {
                       if (editor.game.script.language === "python")
-                        editor.script({ ...editor.game.script, source });
+                        editor.script({ ...editor.game.script, source }, { ...editor.game.script, source: before });
                     }}
                   />
                 ))}

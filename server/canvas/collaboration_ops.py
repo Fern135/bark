@@ -40,6 +40,8 @@ def value_at(document, resource):
         return document
     if resource == "script":
         return document["script"]
+    if resource == "source":
+        return document["script"].get("source") if document["script"]["language"] == "python" else None
     kind, _, key = resource.partition(":")
     if kind == "entity":
         return next((e for e in document["project"]["entities"] if e["id"] == key), None)
@@ -55,7 +57,7 @@ def value_at(document, resource):
 def conflicts(a, b, document):
     if a == b or "*" in (a, b):
         return True
-    script_resources = lambda r: r in ("script", "variables") or r.startswith("block:")
+    script_resources = lambda r: r in ("script", "source", "variables") or r.startswith("block:")
     if any(r in ("script", "variables") for r in (a, b)) and script_resources(a) and script_resources(b):
         return True
     if a.startswith("entity:") and b.startswith("entity:"):
@@ -84,6 +86,10 @@ def apply_ops(document, ops):
             result = value
         elif resource == "script":
             result["script"] = value
+        elif resource == "source":
+            if result["script"]["language"] != "python" or not isinstance(value, str):
+                raise OpError("INVALID_OP", "Python source requires an existing Python script")
+            result["script"]["source"] = value
         elif resource == "variables":
             result["script"]["workspace"]["variables"] = value
         elif resource.startswith("section:"):

@@ -60,6 +60,8 @@ class Connection:
         self.room: "Room | None" = None
         self.commits = TokenBucket(config.RATE_COMMITS)
         self.locks = TokenBucket(config.RATE_LOCKS)
+        self.presence_rate = TokenBucket(20)
+        self.presence = {}
         self._queue: asyncio.Queue[dict | None] = asyncio.Queue(maxsize=config.SEND_QUEUE_MAX)
         self._writer: asyncio.Task | None = None
         self.overflowed = False
