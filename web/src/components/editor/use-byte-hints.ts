@@ -41,10 +41,11 @@ export function useByteHints(game: Game, projectId: string, localRevision: numbe
   }, [preferenceKey, userId]);
   useEffect(() => {
 controller.update({ identity: JSON.stringify([userId ?? "guest", projectId, revision, scriptId]), key, localRevision, enabled: enabled && !!userId && preferences[userId] !== undefined, active, snapshot: () => {
-  const snapshot = buildByteSnapshot(game, scriptId);
-  if (snapshot && diagnostic) snapshot.diagnostics = [diagnostic, ...snapshot.diagnostics];
+ const snapshot = buildByteSnapshot(game, scriptId);
+ if (snapshot && diagnostic) snapshot.diagnostics = [diagnostic, ...snapshot.diagnostics];
   return snapshot;
-} });
+ } });
+  }, [controller, userId, projectId, revision, scriptId, key, localRevision, enabled, active, game, diagnostic]);
   useEffect(() => {
     let pointer = false, composing = false;
     const refresh = () => controller.activity(pointer || composing || document.hidden || !!document.querySelector('[role="dialog"], [role="alertdialog"], [data-radix-popper-content-wrapper]'));
