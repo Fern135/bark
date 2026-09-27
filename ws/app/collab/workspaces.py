@@ -7,6 +7,7 @@ import uuid
 from . import bus, canvas_store
 from .rooms import Connection
 from canvas.collaboration_ops import OpError
+from .presence import presence
 
 _rooms = {}
 _guard = asyncio.Lock()
@@ -53,7 +54,7 @@ class Room:
                 try:
                     state = await canvas_store.call("state", conn.user_id, self.doc)
                     conn.send({"type": "state", "rev": state["rev"], "locks": state["locks"], "members": state["members"]})
-                    await self.publish({"type": "presence_event", "peer": {"user": conn.user_id, "conn": conn.id, "resource": conn.resource}})
+                    await self.publish({"type": "presence_event", "peer": {**conn.presence, "user": conn.user_id, "conn": conn.id, "resource": conn.resource}})
                 except OpError:
                     conn.send({"type": "error", "code": "FORBIDDEN", "message": "Your access to this workspace ended."})
                     await conn.websocket.close(code=1008)
@@ -81,8 +82,8 @@ async def leave(conn):
 async def handle(conn, message):
     kind = message.get("type")
     if kind == "join":
-        if message.get("protocol") != 2:
-            raise OpError("INVALID_OP", "Reload Bark to use collaboration protocol 2")
+        if message.get("protocol") != 3:
+            raise OpError("INVALID_OP", "Reload Bark to use collaboration protocol 3")
         doc = str(uuid.UUID(message["doc"]))
         state = await canvas_store.call("snapshot", conn.user_id, doc)
         await leave(conn)
@@ -96,6 +97,7 @@ async def handle(conn, message):
             room.connections[conn.id] = conn
             conn.room = room
             conn.resource = None
+            conn.presence = {}
         # Read after subscribing so a concurrent commit is either in the snapshot or bus.
         state = await canvas_store.call("snapshot", conn.user_id, doc)
         have = message.get("have")
@@ -112,7 +114,24 @@ async def handle(conn, message):
     room = conn.room
     if room is None:
         raise OpError("FORBIDDEN", "Join a workspace first")
-    if kind == "lock":
+    if kind == "sync":
+        state = await canvas_store.call("snapshot", conn.user_id, room.doc)
+        have = message.get("have")
+        replay = await canvas_store.call("replay", conn.user_id, room.doc, have) if isinstance(have, int) and have >= 0 else None
+        for frame in replay if replay is not None else [state]:
+            conn.send(frame)
+        conn.send({"type": "joined", "rev": state["rev"], "conn": conn.id, "members": state["members"], "locks": state["locks"]})
+    elif kind == "presence":
+        if not conn.presence_rate.take():
+            return
+        value = presence(message)
+        if value.get("preview"):
+            state = await canvas_store.call("state", conn.user_id, room.doc)
+            if not any(lock["conn"] == conn.id and lock["resource"] in ("*", f'entity:{value["preview"]["id"]}') for lock in state["locks"]):
+                value["preview"] = None
+        conn.presence = value
+        await room.publish({"type": "presence_event", "peer": {**value, "user": conn.user_id, "conn": conn.id, "resource": conn.resource}})
+    elif kind == "lock":
         resources = message.get("resources")
         if not isinstance(resources, list) or not 0 < len(resources) <= 64 or any(not isinstance(r, str) or len(r) > 256 for r in resources):
             raise OpError("INVALID_OP", "Invalid lock resources")

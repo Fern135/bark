@@ -1,19 +1,23 @@
-# Canvas workspace protocol v2
+# Canvas workspace protocol v3
 
 The gateway's `/ws/` endpoint uses the existing HttpOnly access cookie and origin
-allowlist. The `ready` frame contains `protocol: 2`, authenticated `user`, and a
+allowlist. The `ready` frame contains `protocol: 3`, authenticated `user`, and a
 unique `conn`. Tokens expire while connected. Every durable operation rechecks
 workspace membership; knowing an ID never grants membership.
 
 ## Join and synchronize
 
-Send `{type:"join", protocol:2, doc:<game UUID>, have?:<revision>}`. Creation is
+Send `{type:"join", protocol:3, doc:<game UUID>, have?:<revision>}`. Creation is
 through Canvas only. The service sends ordered `patch` frames from retained
 history or a `snapshot` containing the Canvas document. `joined` ends replay and
 includes revision, connection ID, roster, and locks. Drop duplicate revisions;
 request synchronization for gaps. A periodic `state` frame supplies current
 revision, locks, and members, recovering missed Redis notifications and access
 revocation even when no further edits happen.
+
+An already joined connection can send `{type:"sync", have:<revision>}` to catch
+up without leaving the room, releasing its leases, or interrupting typing.
+The response is the same replay/snapshot followed by `joined`.
 
 Canvas Game and its section rows are the only durable document. Django owns
 schema and transactions. The socket service calls those functions using
@@ -33,7 +37,10 @@ connection's locks; disconnect and membership removal also release them.
 
 An edit is `{op:"set", resource, before, value}`. Null deletes an entity/root
 block. Sections include settings, cameras, input, properties, assets, materials,
-prefabs, and name. Python uses the whole script resource. A confirmed import or
+prefabs, and name. Python source changes use `source` with string `before` and
+`value`. This resource needs no exclusive lease, but still checks membership,
+revision, before-value and Python document validity. Another connection's
+`script` or `*` lease blocks source writes during replacement. A confirmed import or
 language conversion takes `*`. All edits in a commit apply atomically.
 
 Send `{type:"commit", base, commitId:<UUID>, ops:[...]}`. Membership, locks,
@@ -48,8 +55,31 @@ hex before canonical JSON hashing so Python and JavaScript agree.
 
 Errors include `FORBIDDEN`, `REV_MISMATCH`, `CONFLICT`, `LOCK_HELD`, `NOT_LOCKED`,
 `INVALID_OP`, `LIMIT_EXCEEDED`, and `UNAVAILABLE`. Preserve unsent local work.
-Only rebase edits whose original resource values remain unchanged. Otherwise
-offer reload or a personal copy. Do not continue shared mutation while offline.
+Python clients map unsent text changes over accepted revisions using CodeMirror
+ChangeSet operational transformation (server changes first), then retry with a
+new commit ID. Remote text transactions preserve unchanged ranges, cursor
+positions, and local undo. Other resource edits require unchanged before-values;
+conflicts offer reload or a personal copy. Do not continue shared mutation while offline.
+
+## Live workspace presence
+
+Send `{type:"presence", camera?:{position:{x,y,z},target:{x,y,z}}, selected?:<id|null>,
+view:"viewport"|"code"|"design", preview?:{id,transform}|null}`. The browser sends
+at most about 12 frames/second; the server bounds coordinates and limits presence
+to 20 frames/second. Transform previews require the connection's entity or whole
+workspace lease. User and connection IDs come from authentication, never this payload.
+
+The existing `presence` response contains `peers` with these fields and their
+authenticated `user`, `conn`, and editing `resource`. Redis distributes the
+transient state across workers. Disconnects remove peers; stale peers expire
+after eight seconds. Camera frusta, name labels, selections, and object drag
+previews are editor presentation only. They never enter Canvas documents, JSON
+exports, undo history, physics, or game scripts. A committed transform still
+travels through the durable `commit` path; cancellation restores its saved pose.
+
+Deploy the updated web, server and websocket code together. Protocol 2 joins are
+rejected with a reload message because old clients cannot apply `source` edits. This remains
+workspace co-editing; each Play session runs its own local game simulation.
 
 ## Setup and tests
 

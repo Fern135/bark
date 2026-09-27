@@ -17,9 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include 
 from .health import ready
+from coach.views import review as coach_review
 
 
 api_urls = [
+    path("coach/review/", coach_review),
     path("marketplace/", include("marketplace.urls")),
     path("auth/", include("authenticator.urls")), # api/auth/
     path("canvas/", include("canvas.urls")),      # api/canvas/

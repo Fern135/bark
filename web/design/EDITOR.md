@@ -1,5 +1,17 @@
 # Bark editor
 
+## Live workspace editing
+
+Signed-in users can invite collaborators through the header. Shared workspaces
+support simultaneous Python editing with automatic text merging and local undo;
+independent Blockly stacks and world objects retain per-resource leases. Camera
+frusta and colored name labels show teammates' camera locations, and outlines
+show their selections. Moving, rotating or resizing an object is previewed on
+peers before release, then saved through the existing durable commit path.
+Presence and previews never enter exported games. Offline editing pauses and
+reconnect catches up without replacing teammates' work. Play sessions remain
+local simulations. The older preview-only notes below describe earlier UI work.
+
 `/editor` implements the Code, Design, Viewport, add-object, gallery, and customization references. The homepage has an Open editor link. The existing homepage demo remains available.
 
 ## Run

@@ -3,9 +3,12 @@ import { drafts } from "./drafts";
 import { gamesApi, type Game } from "./games";
 import type { SaveSeed, SaveState } from "./autosave";
 import { serializeGame } from "@bark/scripting/player";
+import { mergeText } from "./shared-text";
+import type { CameraPose, Transform } from "@bark/engine";
 
 export type Member = { user: string; name: string; role: "owner" | "editor" };
-export type Peer = { user: string; conn: string; resource: string | null };
+export type Presence = { camera?: CameraPose; selected?: string | null; view?: string; preview?: { id: string; transform: Transform } | null };
+export type Peer = Presence & { user: string; conn: string; resource: string | null };
 export type ResourceLock = { resource: string; user: string; conn: string };
 export type Edit = { op: "set"; resource: string; before: unknown; value: unknown };
 export type CollaborationState = SaveState & { connected: boolean; members: Member[]; peers: Peer[]; locks: ResourceLock[]; conn: string };
@@ -31,6 +34,7 @@ function roots(game: Game): Root[] {
 export function valueAt(game: Game, resource: string): unknown {
   if (resource === "*") return game;
   if (resource === "script") return game.script;
+  if (resource === "source") return game.script.language === "python" ? game.script.source : null;
   if (resource === "variables") return game.script.language === "blocks" ? game.script.workspace.variables ?? [] : [];
   const [kind, ...parts] = resource.split(":"); const key = parts.join(":");
   if (kind === "entity") return game.project.entities.find((e) => e.id === key) ?? null;
@@ -42,20 +46,26 @@ export function edits(before: Game, after: Game): Edit[] {
   const add = (resource: string) => { const a = valueAt(before, resource), b = valueAt(after, resource); if (!equal(a, b)) result.push({ op: "set", resource, before: a, value: b }); };
   for (const id of new Set([...before.project.entities, ...after.project.entities].map((e) => e.id))) add(`entity:${id}`);
   for (const key of ["name", "settings", "cameras", "input", "properties", "assets", "materials", "prefabs"]) add(`section:${key}`);
-  if (before.script.language !== "blocks" || after.script.language !== "blocks") add("script");
+  if (before.script.language === "python" && after.script.language === "python" && equal(before.script.blocksBackup, after.script.blocksBackup)) add("source");
+  else if (before.script.language !== "blocks" || after.script.language !== "blocks") add("script");
   else {
     for (const id of new Set([...roots(before), ...roots(after)].map((b) => b.id))) add(`block:${id}`);
     add("variables");
   }
   return result;
 }
-export function applyEdits(document: Game, ops: Edit[], check = true): Game {
+export function applyEdits(document: Game, ops: Edit[], check = true, merge = false): Game {
   let game = structuredClone(document);
   for (const op of ops) {
+    if (merge && op.resource === "source" && game.script.language === "python" && typeof op.before === "string" && typeof op.value === "string") {
+      game.script.source = mergeText(op.before, op.value, game.script.source);
+      continue;
+    }
     if (check && !equal(valueAt(game, op.resource), op.before)) throw new Error("This item changed while you were editing. Reload or save your work as a copy.");
     const value = structuredClone(op.value);
     if (op.resource === "*") game = value as Game;
     else if (op.resource === "script") game.script = value as Game["script"];
+    else if (op.resource === "source" && game.script.language === "python") game.script.source = value as string;
     else if (op.resource === "variables" && game.script.language === "blocks") game.script.workspace.variables = value;
     else if (op.resource.startsWith("section:")) (game.project as unknown as Record<string, unknown>)[op.resource.slice(8)] = value;
     else {
@@ -106,6 +116,9 @@ export class Collaboration {
   private retryDelay = 500;
   private interacting = false;
   private replacement = false;
+  private presence: Presence = {};
+  private lastPresence = 0;
+  private lastPresenceValue = "";
   constructor(private seed: SaveSeed, document: Game, private notify: (state: CollaborationState) => void, private remote: (game: Game) => void) {
     this.base = structuredClone(seed.collabBase ?? document); this.local = structuredClone(document); this.rev = seed.revision ?? 0;
     this.state.dirty = !equal(this.base, this.local);
@@ -125,13 +138,13 @@ export class Collaboration {
       this.joining = false;
       if (this.stopped) return;
       const session = event.code === 1008;
-      this.emit({ connected: false, locks: [], status: session ? "session" : "offline", message: session ? "Sign in again or check workspace access." : "Offline — shared editing paused. Reconnecting…" });
+      this.emit({ connected: false, locks: [], peers: [], status: session ? "session" : "offline", message: session ? "Sign in again or check workspace access." : "Offline — shared editing paused. Reconnecting…" });
       void this.keepDraft();
       if (!session && !this.stopped) { this.reconnect = setTimeout(() => this.start(), this.retryDelay); this.retryDelay = Math.min(this.retryDelay * 2, 10000); }
     };
     this.emit({});
   }
-  private join() { if (this.joining) return; this.joining = true; this.emit({ connected: false }); this.send({ type: "join", protocol: 2, doc: this.seed.id, have: this.rev }); }
+  private join() { if (this.joining) return; this.joining = true; this.send({ type: this.state.connected ? "sync" : "join", protocol: 3, doc: this.seed.id, have: this.rev }); }
   // Payloads are checked by the server and applied serially here.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async receive(m: any) {
@@ -147,11 +160,12 @@ export class Collaboration {
       if (m.rev <= this.rev) return;
       if (m.rev !== this.rev + 1) { this.joining = false; this.join(); return; }
       const next = applyEdits(this.base, m.ops);
-      if (m.hash && await digest(next) !== m.hash) { this.joining = true; this.send({ type: "join", protocol: 2, doc: this.seed.id }); return; }
+      if (m.hash && await digest(next) !== m.hash) { this.joining = true; this.send({ type: "join", protocol: 3, doc: this.seed.id }); return; }
       if (this.pending && this.pending.id === m.commitId) {
         const newer = edits(this.pending.document, this.local);
         this.base = next; this.rev = m.rev; this.pending = undefined; this.replacement = false;
         this.local = applyEdits(next, newer); this.remote(this.local);
+        if (this.presence.preview && m.ops.some((op: Edit) => op.resource === `entity:${this.presence.preview?.id}` || op.resource === "*")) this.publishPresence({ preview: null }, true);
       } else this.rebase(next, m.rev);
       await this.keepDraft(); this.emit({}); this.schedule();
     } else if (m.type === "joined") {
@@ -165,9 +179,12 @@ export class Collaboration {
       this.schedule();
     } else if (m.type === "state") {
       this.emit({ locks: m.locks, members: m.members });
-      if (m.rev !== this.rev && !this.joining) this.join();
+      if (m.rev > this.rev && !this.joining) this.join();
       else this.schedule();
-    } else if (m.type === "presence") this.emit({ peers: m.peers });
+    } else if (m.type === "presence") {
+      this.state = { ...this.state, peers: m.peers };
+      this.notify(this.state);
+    }
     else if (m.type === "locks" || m.type === "locked") {
       this.emit({ locks: m.locks });
       if (m.type === "locked") { this.waiters.get(m.nonce)?.(true); this.waiters.delete(m.nonce); }
@@ -182,7 +199,7 @@ export class Collaboration {
   }
   private rebase(next: Game, rev: number) {
     const pending = edits(this.base, this.local).filter((op) => !equal(valueAt(next, op.resource), op.value));
-    try { const local = applyEdits(next, pending); this.base = next; this.rev = rev; this.local = local; this.remote(local); }
+    try { const local = applyEdits(next, pending, true, true); this.base = next; this.rev = rev; this.local = local; this.remote(local); }
     catch (e) { this.base = next; this.rev = rev; this.fail((e as Error).message); }
   }
   private fail(message: string) { this.emit({ status: "conflict", message }); void this.keepDraft(); }
@@ -191,7 +208,7 @@ export class Collaboration {
     try {
       // The viewport can defer remote patches during a gesture. Apply only the
       // author's delta so its older rendering cannot overwrite a teammate's edit.
-      this.local = authoredBefore && !replacement ? applyEdits(this.local, edits(authoredBefore, game)) : structuredClone(game);
+      this.local = authoredBefore && !replacement ? applyEdits(this.local, edits(authoredBefore, game), true, true) : structuredClone(game);
     } catch (error) {
       this.local = structuredClone(game); this.fail((error as Error).message); return;
     }
@@ -199,14 +216,17 @@ export class Collaboration {
     this.remote(this.local); void this.keepDraft(); this.schedule();
   }
   private schedule() {
-    clearTimeout(this.timer);
-    if (!this.state.connected || this.pending || this.packing || ["conflict", "session", "error"].includes(this.state.status)) return;
+    if (!this.state.connected || this.joining || this.pending || this.packing || ["conflict", "session", "error"].includes(this.state.status)) return;
+    if (this.timer) return;
     if (equal(this.base, this.local)) { this.emit({ status: "saved", message: "Live · Saved" }); return; }
-    this.timer = setTimeout(() => { void this.flush(); }, 100);
+    this.timer = setTimeout(() => { this.timer = undefined; void this.flush(); }, 60);
   }
-  owns(resource: string) { return this.state.locks.some((l) => l.conn === this.state.conn && (l.resource === resource || l.resource === "*")); }
+  owns(resource: string) { return resource === "source" ? this.state.connected && !this.state.locks.some((l) => l.conn !== this.state.conn && ["*", "script"].includes(l.resource)) : this.state.locks.some((l) => l.conn === this.state.conn && (l.resource === resource || l.resource === "*")); }
   async acquire(resources: string[]): Promise<boolean> {
     if (!this.state.connected || ["conflict", "session", "error"].includes(this.state.status)) return false;
+    if (resources.includes("source") && !this.owns("source")) return false;
+    resources = resources.filter((r) => r !== "source");
+    if (!resources.length) return true;
     clearTimeout(this.releaseTimer);
     if (resources.every((r) => this.owns(r))) { this.releaseSoon(); return true; }
     const nonce = ++this.nonce;
@@ -217,17 +237,27 @@ export class Collaboration {
     });
   }
   beginInteraction() { this.interacting = true; }
+  publishPresence(update: Presence, force = false) {
+    this.presence = { ...this.presence, ...update };
+    if (!this.state.connected || (!force && performance.now() - this.lastPresence < 80)) return;
+    const value = canonical(this.presence);
+    if (!force && value === this.lastPresenceValue && performance.now() - this.lastPresence < 2000) return;
+    this.lastPresence = performance.now();
+    this.lastPresenceValue = value;
+    this.send({ type: "presence", ...this.presence });
+  }
   endInteraction() { this.interacting = false; void this.flush(); this.releaseSoon(); }
   releaseSoon() { clearTimeout(this.releaseTimer); this.releaseTimer = setTimeout(() => { if (!this.interacting && !this.pending && equal(this.base, this.local)) this.send({ type: "unlock" }); else this.releaseSoon(); }, 1200); }
   async flush(): Promise<boolean> {
     clearTimeout(this.timer);
-    if (this.pending || this.packing) return false;
+    this.timer = undefined;
+    if (this.pending || this.packing || this.joining) return false;
     if (equal(this.base, this.local)) return true;
     if (!this.state.connected || ["conflict", "session", "error"].includes(this.state.status)) return false;
     this.packing = true;
     try {
       const original = this.local;
-      const packed = JSON.parse(await serializeGame(original, { baseUrl: location.href })) as Game;
+      const packed = original.project.assets.every((asset) => asset.url.startsWith("data:")) ? structuredClone(original) : JSON.parse(await serializeGame(original, { baseUrl: location.href })) as Game;
       // Packing resolves portable assets; preserve edits made while it was in flight.
       this.local = applyEdits(packed, edits(original, this.local));
       const portableAssets = canonical(packed.project.assets);

@@ -41,6 +41,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
   const importedAtStart = useRef(!frameStarter);
   const canvas = useRef<HTMLCanvasElement>(null);
   const runtime = useRef<GameRuntime | null>(null);
+  const [visibleRuntime, setVisibleRuntime] = useState<GameRuntime | null>(null);
   const session = useRef<ScriptingSession | null>(null);
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -77,6 +78,8 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
   }, []);
   const clearHistory = useCallback(() => { history.current = { undo: [], redo: [] }; setHistorySize({ undo: 0, redo: 0 }); }, []);
   const [revision, setRevision] = useState(0);
+  const [localScriptRevision, setLocalScriptRevision] = useState(0);
+  const [documentGeneration, setDocumentGeneration] = useState(0);
   const cancelled = useRef<AbortController | null>(null);
   const alive = useRef(false);
   const lock =
@@ -120,6 +123,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       await engine.load(current.current.project, { signal: abort.signal });
       if (abort.signal.aborted) return;
       runtime.current = engine;
+      setVisibleRuntime(engine);
       // Start the sample at character height; imported games keep an overview.
       engine.cameras.frame(importedAtStart.current ? undefined : "player", importedAtStart.current ? 1.05 : 5.5);
       setBlockChoices(choicesFor(current.current.project));
@@ -138,6 +142,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       off.push(
         engine.on("editorSelection", ({ entityId }) => setSelected(entityId)),
         engine.on("editorTransform", (event) => {
+          liveClient?.publishPresence({ preview: event.phase !== "cancel" ? { id: event.entityId, transform: event.transform } : null }, event.phase !== "preview");
           if (event.phase === "preview") setTransformPreview({ id: event.entityId, transform: event.transform, label: event.label });
           else {
             setTransformPreview(null);
@@ -286,7 +291,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       commit(snapshot()); setDiagnostic(undefined);
     } catch (error) { report(error); }
   }
-  function script(next: ScriptDocument, before?: ScriptDocument) {
+  function script(next: ScriptDocument, before?: ScriptDocument, local = true) {
     if (
       lock ||
       operation.current ||
@@ -294,6 +299,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     )
       return;
     commit({ ...current.current, script: next }, true, false, before ? { ...current.current, script: before } : undefined);
+    if (local) setLocalScriptRevision((value) => value + 1);
     setDiagnostic(undefined);
   }
   async function rename(name: string) {
@@ -329,6 +335,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
       );
       setRevision((n) => n + 1);
       setOutput([]);
+      setDocumentGeneration((n) => n + 1);
       return true;
     } catch (error) {
       if (!abort.signal.aborted) {
@@ -474,6 +481,7 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     setSelected(null);
   }
   return {
+    runtime: visibleRuntime,
     cloud, live, shared: !!saveSeed.collaboration, role: saveSeed.role ?? "owner", acquire,
     tools, setTools, setViewportActive, transformPreview, historySize, undoTransform,
     cancelTransform: () => runtime.current?.editorTools.cancel(),
@@ -490,6 +498,8 @@ export function useEditor(initialGame: Game, saveSeed: SaveSeed, frameStarter = 
     selected,
     setSelected,
     revision,
+    localScriptRevision,
+    documentGeneration,
     lock,
     report,
     edit,

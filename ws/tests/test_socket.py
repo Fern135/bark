@@ -1,4 +1,4 @@
-"""Protocol v2 against a disposable PostgreSQL database (WS_TEST_DSN).
+"""Protocol v3 against a disposable PostgreSQL database (WS_TEST_DSN).
 
 Run the browser collaboration suite for gateway/cookie and multi-worker coverage.
 """
@@ -45,8 +45,8 @@ def receive(ws, kind):
 def test_join_and_durable_commit(client, workspace):
     game, _ = workspace
     with client.websocket_connect("/ws/", headers={"origin":"http://localhost:8080"}) as ws:
-        assert receive(ws, "ready")["protocol"] == 2
-        ws.send_json({"type":"join", "protocol":2, "doc":str(game.id)})
+        assert receive(ws, "ready")["protocol"] == 3
+        ws.send_json({"type":"join", "protocol":3, "doc":str(game.id)})
         snapshot = receive(ws, "snapshot"); receive(ws, "joined")
         ws.send_json({"type":"lock", "resources":["section:properties"], "nonce":1})
         receive(ws, "locked")
@@ -59,13 +59,13 @@ def test_join_and_durable_commit(client, workspace):
 def test_no_legacy_room_creation(client):
     with client.websocket_connect("/ws/", headers={"origin":"http://localhost:8080"}) as ws:
         receive(ws,"ready")
-        ws.send_json({"type":"join", "protocol":2, "doc":"new"})
+        ws.send_json({"type":"join", "protocol":3, "doc":"new"})
         assert receive(ws,"error")["code"] == "INVALID_OP"
 
 def test_uuid_does_not_grant_access(client):
     with client.websocket_connect("/ws/", headers={"origin":"http://localhost:8080"}) as ws:
         receive(ws,"ready")
-        ws.send_json({"type":"join", "protocol":2, "doc":str(uuid.uuid4())})
+        ws.send_json({"type":"join", "protocol":3, "doc":str(uuid.uuid4())})
         assert receive(ws,"error")["code"] == "FORBIDDEN"
 
 

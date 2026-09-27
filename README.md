@@ -23,7 +23,8 @@ browser ──► proxy :8080 ─┬─ /        ─► web
 ```
 
 `web`, `server`, `ws` and `db` sit on an `internal: true` Docker network. Nothing can reach them
-from outside, and they cannot reach the internet. The browser only talks to the gateway, so every
+directly from outside. Django also joins `coach_egress` for outbound OpenAI requests;
+the other application/data services have no internet route. The browser only talks to the gateway, so every
 API call comes from the Next.js frontend on the same origin. The ws service also rejects any
 socket whose `Origin` isn't in `WS_ALLOWED_ORIGINS`, and any connection without a valid JWT.
 
@@ -31,6 +32,20 @@ socket whose `Origin` isn't in `WS_ALLOWED_ORIGINS`, and any connection without 
 from the repository root (see [engine/ and scripting/](#engine-and-scripting)).
 
 ---
+
+## Byte coding hints
+
+Signed-in users get occasional advice in the Code tab, with a per-account browser
+toggle. Configure `OPENAI_API_KEY` in the root `.env` (never a `NEXT_PUBLIC` variable).
+`BYTE_HINTS_ENABLED=0` disables provider calls; an empty key also leaves hints unavailable.
+`OPENAI_MODEL` defaults to `gpt-5.4-mini-2026-03-17`. Restart Django after changing settings.
+The editor waits five seconds after a code edit, limits reviews/hints to one per
+45 seconds, and sends a bounded script/context snapshot. Hints never edit or save code.
+OpenAI requests use `store: false`; Bark does not retain review source or history.
+
+Run `python manage.py test coach` from `server/` and the `byte-hints*.spec.ts`
+Playwright tests from `web/`. See `server/coach/fixtures.json` for the live quality
+check corpus and `server/coach/smoke.py` for the opt-in provider check.
 
 ## Setup (first time)
 
